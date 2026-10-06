@@ -1,0 +1,362 @@
+{
+  "1": {
+    "A": "Correto: output mode `complete` retorna todos os dados agregados e watermark de 2h captura eventos que chegam até 2 horas depois.",
+    "B": "Errado: append mode apenas escreve novas linhas e perderia eventos que chegam após a janela de 10 minutos passar.",
+    "C": "Errado: sem checkpoint, o estado é perdido ao retomar após falha e pode gerar duplicação.",
+    "D": "Errado: `state_retention` não é parâmetro válido de Structured Streaming; a retenção é controlada por watermark."
+  },
+  "2": {
+    "A": "Errado: Kafka + Delta Writer requer código customizado para CDC e gerenciamento de state.",
+    "B": "Correto: Lakeflow Connect managed connector fornece CDC automático e requer mínimo código customizado.",
+    "C": "Errado: DMS + ADLS requer configuração adicional AWS e pipeline customizado.",
+    "D": "Errado: Airflow + batch é solução batch, não quase-real time, e requer orquestração complexa."
+  },
+  "3": {
+    "A": "Errado: `get_json_object` falha com tipo inesperado e não trata union de array/string.",
+    "B": "Errado: `from_json` forçaria schema fixo e falharia se campo for string pura (type mismatch).",
+    "C": "Correto: `variant_get` com `parse_json` trata tipos dinâmicos (array ou string) sem erro pré-existente.",
+    "D": "Errado: `json_extract_array` falha se metadata não for array (não trata union type)."
+  },
+  "4": {
+    "A": "Errado: `scan_bytes` e `bytes_spilled` indicam performance atual, não revelam se dados estão stale.",
+    "B": "Errado: `cache_hit_ratio` não indica se os dados em cache estão desatualizados.",
+    "C": "Correto: comparar `query_start_time` vs `table_updated_at` revela se dados estão stale e Delta Cache status confirma.",
+    "D": "Errado: `remote_IO_bytes` indica I/O patterns, não data freshness."
+  },
+  "5": {
+    "A": "Errado: particionamento fixo não escala bem para múltiplas combinações de query patterns dinâmicos.",
+    "B": "Errado: CLUSTER BY manual sem reordenação automática não adapta a mudanças de access patterns.",
+    "C": "Correto: `CLUSTER BY AUTO` com Predictive Optimization reordena automaticamente, reduzindo custo significativamente.",
+    "D": "Errado: liquid clustering sem Predictive Optimization não reordena automaticamente e benefício é limitado."
+  },
+  "6": {
+    "A": "Errado: criar views parametrizadas para 50+ tabelas × múltiplos grupos gera combinatória insustentável.",
+    "B": "Correto: ABAC com governed tags permite aplicar row filters e column masks declarativamente em bulk.",
+    "C": "Errado: replicar dados em catálogos separados causa duplicação e complexidade de manutenção.",
+    "D": "Errado: UDFs em cada query não escalam bem; difícil de manter e auditável."
+  },
+  "7": {
+    "A": "Errado: SQL view é read-only e não é objeto gerenciado otimizável pelo sistema.",
+    "B": "Correto: UC Metric View é objeto SQL gerenciado que agrega, audita acesso e é otimizado pelo planner.",
+    "C": "Errado: dashboard Lakeview é passive; não audita quem acessou a tabela.",
+    "D": "Errado: Delta não possui triggers built-in; seria solução complexa e custom."
+  },
+  "8": {
+    "A": "Errado: Git Folder não sincroniza queries de forma que rodem com versão específica do repo.",
+    "B": "Errado: não é o principal risk de Git Folder; backups em /Workspace/archive não previnem mudanças acidentais.",
+    "C": "Errado: Declarative Automation Bundles é para deployments, não para mitigação de Git Folder.",
+    "D": "Correto: Git Folder sincroniza bidirecionalmente; usar read-only + PR review mitiga mudanças acidentais em produção."
+  },
+  "9": {
+    "A": "Errado: SCD Type 1 simples requer sobrescrever + backup; não automatiza e requer operações separadas.",
+    "B": "Errado: MERGE manual com inserção de nova linha requer código customizado; não é automático.",
+    "C": "Correto: `stored_as_scd_type(2)` em MERGE automatiza SCD Type 2, reduzindo I/O comparado a operações manuais.",
+    "D": "Errado: event log imutável com MV é overkill e requer refresh manual; mais complexo que MERGE automático."
+  },
+  "10": {
+    "A": "Correto para sessão única, mas não escala para múltiplos jobs (requer pip em cada run).",
+    "B": "Correto e mais escalável para múltiplos jobs (instalação única na startup do cluster).",
+    "C": "Correto com gerenciamento de requirements, mas requer setup adicional de cluster config.",
+    "D": "Correto: todas funcionam, mas init script é mais escalável para múltiplos jobs (reutilização)."
+  },
+  "11": {
+    "A": "Errado: Delta com `schema_evolution` não garante schema enforcement compartilhado entre workspaces.",
+    "B": "Errado: Iceberg sem UC não garante versionamento compartilhado entre workspaces (OpenSharing).",
+    "C": "Errado: Parquet não tem schema enforcement nativo; metastore não escala bem para OpenSharing.",
+    "D": "Correto: Iceberg + UC catalog garante schema enforcement, versionamento compartilhado e integração OpenSharing."
+  },
+  "12": {
+    "A": "Errado: sem deletion vectors, rewrite automático não ocorre ao deletar linhas.",
+    "B": "Errado: Photon não filtra bitmap de deletados; Spark mantém bitmap para filtrar.",
+    "C": "Correto: sem deletion vectors, Spark avalia bitmap de deletados para cada linha das 10B linhas lidas.",
+    "D": "Errado: DELETE sem deletion vectors não reescreve imediatamente todos os arquivos."
+  },
+  "13": {
+    "A": "Errado: degradação de latency é sintoma observado, não métrica preditiva de Predictive Optimization.",
+    "B": "Errado: é métrica reativa de pruning ineficaz, não preditiva que recomenda reordenação.",
+    "C": "Errado: é sintoma específico de overhead, não métrica geral de Predictive Optimization.",
+    "D": "Correto: Predictive Optimization prevê degradação de query latency baseado em histórico de access patterns."
+  },
+  "14": {
+    "A": "Errado: apenas habilita cache globalmente; não otimiza hit rate especificamente para SQL Warehouse.",
+    "B": "Correto: SQL Warehouse com cache enabled + tipo MEMORY é otimizado especificamente para dimension caching.",
+    "C": "Errado: broadcast é para joins específicos; não é mecanismo de dimension caching contínuo.",
+    "D": "Errado: MEMORY-ONLY tables não persistem dados entre queries (cache é por sessão)."
+  },
+  "15": {
+    "A": "Errado: combinatória de 200+ tabelas × múltiplos grupos é combinatorialmente insustentável.",
+    "B": "Correto: UC column masks + ABAC escalam com policies declarativas aplicadas em bulk.",
+    "C": "Errado: replicação de dados causa duplicação e complexidade exponencial de manutenção.",
+    "D": "Errado: UDFs em cada query não escalam bem e são difíceis de manter consistentemente."
+  },
+  "16": {
+    "A": "Errado: REST API loop não fornece version control e requer manual toil repetido.",
+    "B": "Correto: Declarative Automation Bundles (DAB) em YAML + Git sync permite version control e deployment automático.",
+    "C": "Errado: copiar notebooks + webhooks não fornece version control adequado.",
+    "D": "Errado: manter dependência de Azure Data Factory não reduz toil significativamente."
+  },
+  "17": {
+    "A": "Errado: se pip não estivesse no PATH, comando falharia imediatamente, não silenciosamente.",
+    "B": "Correto: init script sem `set -e` retorna erro mas cluster inicia mesmo assim (exit 0 implícito).",
+    "C": "Errado: permissões de root vs user são secundárias; problema principal é fail-fast.",
+    "D": "Errado: incompatibilidade de package causaria erro durante instalação, não silenciosamente na startup."
+  },
+  "18": {
+    "A": "Errado: inserir correções como novas linhas causa duplicação e agregação complexa.",
+    "B": "Correto: MERGE com composite key e flag `is_correction` atualiza linha existente, evitando duplicação.",
+    "C": "Errado: tabelas separadas + UNION é mais complexo e difícil de agregar sem duplicação.",
+    "D": "Errado: versionamento com timestamps é overkill para tratamento de late corrections simples."
+  },
+  "19": {
+    "A": "Errado: chamadas Python batch API não escalam para centenas de milhões (latência por API).",
+    "B": "Correto: UDF SQL Spark com batching + UC secrets escala para centenas de milhões com performance otimizada.",
+    "C": "Errado: Python UDF sem Arrow vectorization; cache de embedding requer setup adicional.",
+    "D": "Errado: fine-tuned model local é overkill para classificação em 5 categorias simples."
+  },
+  "20": {
+    "A": "Errado: MERGE com `WHEN NOT MATCHED BY SOURCE` não automatiza CDC de snapshot completo.",
+    "B": "Errado: CDF + job customizado que compara snapshots não é automático; requer orquestração.",
+    "C": "Correto: `AUTO` MERGE com `stored_as_scd_type(2)` automatiza CDC para comparação de snapshot.",
+    "D": "Errado: Lakeflow Connect é para ingestão; não é mecanismo de transformação SCD."
+  },
+  "21": {
+    "A": "Errado: opção A funciona mas requer CDF habilitado beforehand (não menciona pré-requisito).",
+    "B": "Errado: adição de coluna não lê CDF; apenas cria coluna artificial.",
+    "C": "Errado: sintaxe incorreta para consumir CDF via readStream.",
+    "D": "Correto: opção A é correta mas requer `ALTER TABLE ... SET TBLPROPERTIES` para habilitar CDF beforehand."
+  },
+  "22": {
+    "A": "Errado: dashboard Lakeview é passive; não dispara alerta automático em violação de SLA.",
+    "B": "Correto: UC Metric View + Databricks Alert SQL dispara alerta automático em violação de SLA.",
+    "C": "Errado: ST background refresh com timeout não é feature; não dispara alerta.",
+    "D": "Errado: A é passive; D está incorreto pois A não dispara alerta."
+  },
+  "23": {
+    "A": "Errado: recompactação manual semanal é tedioso e não escala bem para múltiplos patterns.",
+    "B": "Correto: liquid clustering + Predictive Optimization reordena automaticamente, reduzindo custo.",
+    "C": "Errado: particionamento dinâmico não resolve problema de folders vazios.",
+    "D": "Errado: hash bucketing é Legacy e não combina bem com Databricks moderna."
+  },
+  "24": {
+    "A": "Errado: deletion vectors apenas marcam como deleted; não elimina dados antigos automaticamente.",
+    "B": "Errado: recycle bin retém dados se não for desabilitado; não é suficiente sozinho.",
+    "C": "Errado: `delta.deletedFileRetentionDuration = 0` + VACUUM sozinho não garante compliance (recycle bin retém).",
+    "D": "Correto: combinação de PURGE + VACUUM(0) + desabilitar recycle bin garante deleção permanente para GDPR."
+  },
+  "25": {
+    "A": "Errado: `mergeSchema` e transactions auto não previnem duplicação em retry de microbatch.",
+    "B": "Correto: MERGE idempotente com composite key + checkpoint recovery previne duplicação em retry.",
+    "C": "Errado: desabilitar retry não é solução; pode perder dados em falha de sink.",
+    "D": "Errado: check-after é race condition; não é atomicamente seguro em retry."
+  },
+  "26": {
+    "A": "Correto: state accumulation sem watermark causa checkpoint crescer indefinidamente; adicionar watermark + state retention.",
+    "B": "Errado: `RESET CHECKPOINT` não é solução; faria perder estado e causar reprocessamento.",
+    "C": "Errado: recompilation overhead não é causa de checkpoint crescer 100 GB.",
+    "D": "Errado: Iceberg VACUUM não afeta tamanho de ST checkpoint."
+  },
+  "27": {
+    "A": "Errado: `INSERT OVERWRITE` reescreve 500M linhas; ineficiente para 100K updates.",
+    "B": "Correto: MERGE focado apenas em 100K linhas é mais eficiente que reescrever tabela inteira.",
+    "C": "Errado: DELETE + INSERT + VACUUM = 3 operações; mais I/O que MERGE único.",
+    "D": "Errado: reparticionamento com window function é overhead desnecessário."
+  },
+  "28": {
+    "A": "Correto: `query_queue_time` vs `query_duration` revela se gargalo é queueing.",
+    "B": "Correto: `execution_status` QUEUED vs RUNNING identifica queueing.",
+    "C": "Correto: ambas métricas necessárias; queue time > 5 minutos indica falta de clusters.",
+    "D": "Errado: `singleNode` é legítimo para workloads apropriados."
+  },
+  "29": {
+    "A": "Errado: serverless não tem opção `spot_instances`; compute é managed automaticamente.",
+    "B": "Errado: classic cluster não é pay-per-query; pagaria por node ativo contínuamente.",
+    "C": "Correto: serverless SQL Warehouse é pay-per-query com compute managed e não requer gerenciamento.",
+    "D": "Errado: classic warehouse requer gerenciamento contínuo; não é pay-per-query."
+  },
+  "30": {
+    "A": "Errado: hint BROADCAST em 5B linhas falha; broadcast não resolve o problema.",
+    "B": "Correto: broadcast falha em tabelas > ~1GB; alternativa é SortMergeJoin.",
+    "C": "Correto: broadcast precisa caber em executor memory; aumentar threshold não garante cabe.",
+    "D": "Correto: desabilitar broadcast automático + usar SortMergeJoin + skew hints é abordagem correta."
+  },
+  "31": {
+    "A": "Errado: exportar CSV expõe dados raw; inseguro para analytics compartilhado.",
+    "B": "Errado: row filters não agregam automaticamente; ainda expõe dados granulares.",
+    "C": "Correto: Databricks Clean Rooms permite SQL analytics compartilhado sem exposição de dados raw.",
+    "D": "Errado: Delta share com external recipient expõe dados raw; não é clean room."
+  },
+  "32": {
+    "A": "Errado: window functions funcionam com partições; é o propósito delas.",
+    "B": "Correto: data skew causa straggler task; partição com 1B rows paralisa job.",
+    "C": "Correto: resultado está correto mas latência aumenta devido a straggler.",
+    "D": "Correto: ambas B e C; reparticionamento ou sampling mitiga impacto de skew."
+  },
+  "33": {
+    "A": "Correto: `failOnNewColumnViolation = true` faz falhar ao detectar novo campo.",
+    "B": "Errado: `mergeSchema = false` é default e permite novo campo como null; não faz falhar.",
+    "C": "Correto: validação de JSON schema antes de ingestão faz falhar se schema não match.",
+    "D": "Correto: A e C fazem falhar em schema drift; B está errado."
+  },
+  "34": {
+    "A": "Correto: variant indexing não é suportado; indexação em VARIANT é ineficiente.",
+    "B": "Correto: full table scan; predicate push-down em VARIANT é limitado.",
+    "C": "Correto: Spark não otimiza `variant_get()` eficientemente; reescrever com `get_json_object` ajuda.",
+    "D": "Correto: todas as causas são válidas; melhor extrair campo como coluna durante ingestão."
+  },
+  "35": {
+    "A": "Correto: `ADD COLUMN ... DEFAULT NULL` permite schema evolution sem quebrar reads de dados antigos.",
+    "B": "Errado: `ADD COLUMN ... NOT NULL` falharia em reads de dados antigos (valor faltante).",
+    "C": "Correto: A permite evolution; B falharia em schema mismatch com dados legados.",
+    "D": "Errado: B não funciona em Iceberg; NOT NULL sem default quebra schema evolution."
+  },
+  "36": {
+    "A": "Correto: adicionar watermark em ambos streams com mesmo delay garante join correto.",
+    "B": "Errado: state timeout sem watermark é insuficiente para garantir join correto.",
+    "C": "Errado: append mode não garante join correto; precisa de watermark.",
+    "D": "Errado: join é possível em streams com watermark; não precisa de micro-batch MERGE."
+  },
+  "37": {
+    "A": "Errado: consumer lag seria sintoma visível em Spark UI antes de 3 dias.",
+    "B": "Correto: state explosion sem watermark causa throughput degradation.",
+    "C": "Correto: checkpoint overhead com estado crescente causa degradação.",
+    "D": "Correto: ambas B e C causam degradação; monitorar state bytes no Spark Streaming UI."
+  },
+  "38": {
+    "A": "Correto: `OPTIMIZE` diária + `VACUUM` balanceia performance vs cost.",
+    "B": "Correto: Predictive Optimization automatiza compaction; mais eficiente que manual.",
+    "C": "Correto: Iceberg auto-compaction com target file size é automático.",
+    "D": "Correto: ambas A e B funcionam; Predictive Optimization é mais eficiente que manual."
+  },
+  "39": {
+    "A": "Errado: hardcode em notebook é inseguro; NUNCA usar para credenciais.",
+    "B": "Correto: UC Secrets via `dbutils.secrets.get()` é seguro com audit trail.",
+    "C": "Errado: environment vars não têm audit trail; menos seguro que UC Secrets.",
+    "D": "Errado: C não é recomendado; B é a abordagem segura."
+  },
+  "40": {
+    "A": "Errado: interpolação pode funcionar se job config estiver correta.",
+    "B": "Correto: problema é job config passando valor literal em vez de parâmetro dinâmico.",
+    "C": "Errado: Git Folder não afeta interpolação de parâmetros de job.",
+    "D": "Errado: A está errado; apenas B é correto."
+  },
+  "41": {
+    "A": "Errado: não exatamente pré-requisite em senso binário estrito.",
+    "B": "Errado: table grant não herda automaticamente de schema grant.",
+    "C": "Correto: schema USAGE é pré-requisite necessário; table grant também obrigatório (não herda).",
+    "D": "Errado: schema grant ainda é necessário mesmo com table grant."
+  },
+  "42": {
+    "A": "Errado: sintaxe correta é `SELECT * FROM sales VERSION AS OF 0`; `@0` não é padrão.",
+    "B": "Correto: `RESTORE TABLE sales TO VERSION x` é forma correta de rollback.",
+    "C": "Errado: `TIMESTAMP AS OF` é read-only; não faz restore (não modifica estado).",
+    "D": "Errado: se VACUUM foi rodado com retention baixa, dados podem estar permanentemente perdidos."
+  },
+  "43": {
+    "A": "Errado: histogram é adicional; não é suficiente sozinho para escolher agregação strategy.",
+    "B": "Correto: `table_stats` (rowCount, totalSize) armazenado em metastore usado por Catalyst.",
+    "C": "Correto: `ANALYZE TABLE` popula rowCount/totalSize; Catalyst usa para escolher estratégia.",
+    "D": "Errado: fallback heuristics pode ser subóptimo; stats explícitas são melhores."
+  },
+  "44": {
+    "A": "Errado: depende de negócio; não é simplesmente \"primeira está correta\".",
+    "B": "Errado: primeira é mais típica para SUM; segunda trata NULL como 0 (semântica diferente).",
+    "C": "Errado: D está mais correto pois reconhece diferença semântica.",
+    "D": "Correto: primeira ignora NULLs; segunda trata como 0; negócio decide semântica correta."
+  },
+  "45": {
+    "A": "Correto: job notification + Slack webhook funciona para alertas.",
+    "B": "Correto: Databricks Alerts feature é mais robusta e gerenciada.",
+    "C": "Correto: query em `system.jobs.runs` funciona manualmente.",
+    "D": "Correto: todas funcionam; B (Alerts managed) é mais robusta."
+  },
+  "46": {
+    "A": "Correto: `AES_ENCRYPT()` pré-computado no ingress evita overhead em runtime.",
+    "B": "Correto: UC column masks com predicate push-down têm overhead negligível.",
+    "C": "Correto: MV pre-masked fornece query acceleration para queries críticas.",
+    "D": "Correto: ambas estratégias; B para casos gerais, C para queries críticas."
+  },
+  "47": {
+    "A": "Correto: job pode ser cancelado se usuário interromper notebook all-purpose.",
+    "B": "Correto: job e notebook competem por recursos do mesmo cluster.",
+    "C": "Correto: job pode afetar Spark context (UI limpa, cache compartilhado).",
+    "D": "Correto: todas anteriores; usar job cluster (isolado, dedicado) garante reliability."
+  },
+  "48": {
+    "A": "Correto: PySpark tem overhead de serialização Python; Arrow reduz overhead.",
+    "B": "Correto: Catalyst otimiza Pandas UDF com Arrow vectorization.",
+    "C": "Errado: PySpark paralela também; diferença é vectorization.",
+    "D": "Correto: ambas A e B; Pandas UDF 6x mais rápido em operações Python-heavy."
+  },
+  "49": {
+    "A": "Errado: concatenação string é SQL injection risk; perigoso em produção.",
+    "B": "Errado: CONCAT ainda não é parameterizado; SQL injection risk persiste.",
+    "C": "Correto: SQL validation com allowlist de colunas previne injection.",
+    "D": "Correto: reconhece que C é mais robusto; A é perigoso."
+  },
+  "50": {
+    "A": "Errado: executor memory overflow causaria crash imediato, não degradação gradual.",
+    "B": "Correto: state accumulation sem watermark; checkpoints crescem indefinidamente causando degradação.",
+    "C": "Errado: partition count baixo não causa degradação; partições escaláveis.",
+    "D": "Errado: schema evolution não causa degradação consistente de throughput."
+  },
+  "51": {
+    "A": "Correto: `PARTITION BY MONTH(event_timestamp)` fornece pruning eficiente.",
+    "B": "Correto: Iceberg manifest prune + statistics (min/max) mais eficiente para range queries.",
+    "C": "Errado: liquid clustering sem Predictive Optimization não otimiza range queries bem.",
+    "D": "Correto: ambas A e B funcionam; B é mais eficiente para high-cardinality range queries."
+  },
+  "52": {
+    "A": "Errado: hardcode em `spark.conf` é inseguro; sem audit trail.",
+    "B": "Correto: UC Secrets via `dbutils.secrets.get()` em PySpark job é seguro com audit trail.",
+    "C": "Errado: environment vars não têm audit trail; menos seguro.",
+    "D": "Correto: B é forma segura com audit trail; A não é recomendado."
+  },
+  "53": {
+    "A": "Correto: `TRY_CAST` retorna NULL se inválido; job continua sem erro.",
+    "B": "Errado: format hint não previne erro se valor for inválido (não faz tratamento).",
+    "C": "Correto: pré-validação com `IF(REGEXP_LIKE)` funciona mas mais verbose.",
+    "D": "Correto: ambas A e C funcionam; A é mais legível e conciso."
+  },
+  "54": {
+    "A": "Correto: Spark auto schema inference + `mergeSchema = true` funciona para multi-format.",
+    "B": "Correto: Lakeflow Connect com auto-schema detection é mais robusto para multi-format.",
+    "C": "Errado: UC não faz auto-schema propagation entre diferentes formatos.",
+    "D": "Correto: ambas A e B funcionam; B é mais robusto para caso de multi-format complexo."
+  },
+  "55": {
+    "A": "Errado: `shuffle_write_bytes` > 50% é esperado em joins; não indica reordenação necessária.",
+    "B": "Correto: ratio de `scan_bytes` vs `bytes_skipped` baixo indica poor pruning requerendo reordenação.",
+    "C": "Errado: optimizer recommendation score não é métrica padrão de Predictive Optimization.",
+    "D": "Errado: C não é métrica; B é mais direta."
+  },
+  "56": {
+    "A": "Errado: job pegou dados com `updated_at > yesterday`; sim pegou os 30 dias atualizados.",
+    "B": "Correto: job pegou todos os 30 dias porque cliente atualizou ontem.",
+    "C": "Errado: job retomou; problema é que incremental simples não é robusto.",
+    "D": "Correto: incremental simples com timestamp é vulnerável; usar MERGE + watermark."
+  },
+  "57": {
+    "A": "Correto: nova dimensão conformed + gradual migration permite histórico intacto.",
+    "B": "Errado: modificar fact table histórica com DROP/ADD é risky.",
+    "C": "Correto: recriar fact tables funciona mas é mais disruptivo.",
+    "D": "Correto: ambas A e C; A é menos disruptivo para migração gradual."
+  },
+  "58": {
+    "A": "Correto: `/*+ BROADCAST(dim_product) */` hint força BroadcastHashJoin.",
+    "B": "Errado: aumentar `autoBroadcastJoinThreshold` não força broadcast de 10K (tabela pequena).",
+    "C": "Errado: reordenação não garante broadcast de tabela pequena.",
+    "D": "Errado: B não é eficaz; apenas A é correto."
+  },
+  "59": {
+    "A": "Errado: desabilitar Predictive Optimization perde benefício de otimização automática.",
+    "B": "Errado: não há property padrão `OPTIMIZE frequency` em CREATE TABLE.",
+    "C": "Correto: `spark.databricks.predictiveOptimization.maxFrequency = weekly` reduz frequência.",
+    "D": "Errado: B não é correto; apenas C resolve."
+  },
+  "60": {
+    "A": "Correto: UC system tables (`system.information_schema.tables`) + tags fornece inventory nativo com metadados.",
+    "B": "Correto: Databricks metadata API + UC tags funciona via API call.",
+    "C": "Errado: Glean é search tool; não fornece structured inventory auditável.",
+    "D": "Correto: ambas funcionam; A é mais direto para audit structured de asset inventory."
+  }
+}

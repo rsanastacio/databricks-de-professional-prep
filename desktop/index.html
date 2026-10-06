@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulados DE Professional</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --ink: #1a1a1a; --muted: #666;
+    --line: #e2e4e8; --brand: #FF3621; --ok: #1a7f37; --bad: #cf222e;
+    --chip: #eef0f3; --accent: #0b5cad; --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16181d; --card: #1f2228; --ink: #e8eaed; --muted: #9aa0a6;
+      --line: #333842; --chip: #2a2e36; --accent: #6cb2ff; --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181d; --card: #1f2228; --ink: #e8eaed; --muted: #9aa0a6;
+    --line: #333842; --chip: #2a2e36; --accent: #6cb2ff; --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  header {
+    position:sticky; top:0; z-index:10; background:var(--card); border-bottom:1px solid var(--line);
+    box-shadow:var(--shadow); padding:12px 16px;
+  }
+  .hrow { display:flex; flex-wrap:wrap; gap:10px; align-items:center; max-width:900px; margin:0 auto; }
+  h1 { font-size:16px; margin:0; flex:1 1 auto; }
+  h1 small { color:var(--muted); font-weight:400; }
+  .tabs { display:flex; gap:6px; }
+  button, select { font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:7px 12px; }
+  button:hover { border-color:var(--accent); }
+  .tab.active { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .primary { background:var(--brand); color:#fff; border-color:var(--brand); font-weight:600; }
+  .ghost { background:transparent; }
+  .bar { height:7px; background:var(--chip); border-radius:99px; overflow:hidden; margin-top:8px; max-width:900px; margin-left:auto; margin-right:auto; }
+  .bar > i { display:block; height:100%; background:var(--accent); width:0%; transition:width .2s; }
+  .meta { max-width:900px; margin:6px auto 0; display:flex; gap:14px; flex-wrap:wrap; align-items:center; color:var(--muted); font-size:13px; }
+  .meta b { color:var(--ink); }
+  .meta label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+  main { max-width:900px; margin:18px auto; padding:0 16px 120px; }
+  .q { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:14px 0; box-shadow:var(--shadow); scroll-margin-top:128px; }
+  .q .num { font-weight:700; }
+  .badge { display:inline-block; font-size:11px; background:var(--chip); color:var(--muted); padding:2px 8px; border-radius:99px; margin-left:6px; vertical-align:middle; }
+  .qtext { margin:10px 0 12px; white-space:pre-wrap; }
+  .opt { display:block; border:1px solid var(--line); border-radius:9px; padding:10px 12px; margin:7px 0; cursor:pointer; transition:.12s; }
+  .opt:hover { border-color:var(--accent); }
+  .opt input { margin-right:9px; }
+  .opt.sel { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, transparent); }
+  .opt .lk { font-weight:700; margin-right:6px; }
+  .reviewed .opt.correct { border-color:var(--ok); background:color-mix(in srgb, var(--ok) 14%, transparent); }
+  .reviewed .opt.wrong { border-color:var(--bad); background:color-mix(in srgb, var(--bad) 14%, transparent); }
+  .reviewed .opt.correct .lk::after { content:" ✓"; color:var(--ok); }
+  .reviewed .opt.wrong .lk::after { content:" ✗"; color:var(--bad); }
+  .optnote { font-size:12.5px; color:var(--muted); margin:-3px 0 8px 26px; padding-left:9px; border-left:2px solid var(--line); display:none; }
+  .reviewed .optnote { display:block; }
+  .optnote.ok { border-color:var(--ok); } .optnote.bad { border-color:var(--bad); }
+  .expl { margin-top:10px; padding:10px 12px; border-left:3px solid var(--accent); background:var(--chip); border-radius:0 8px 8px 0; font-size:14px; display:none; }
+  .reviewed .expl { display:block; }
+  .verdict { font-weight:700; font-size:13px; margin-top:8px; display:none; }
+  .reviewed .verdict { display:block; }
+  .verdict.ok { color:var(--ok); } .verdict.bad { color:var(--bad); }
+  footer {
+    position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line);
+    box-shadow:0 -1px 3px rgba(0,0,0,.08); padding:10px 16px;
+  }
+  .frow { max-width:900px; margin:0 auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .frow .spacer { flex:1; }
+  #results { background:var(--card); border:2px solid var(--brand); border-radius:12px; padding:18px; margin:14px 0; display:none; }
+  #results.show { display:block; }
+  .score { font-size:30px; font-weight:800; }
+  .score.pass { color:var(--ok); } .score.fail { color:var(--bad); }
+  table { border-collapse:collapse; width:100%; margin-top:10px; font-size:14px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .hint { color:var(--muted); font-size:13px; }
+  .empty { text-align:center; color:var(--muted); padding:60px 20px; }
+  code { background:var(--chip); padding:1px 5px; border-radius:5px; font-size:.92em; }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>Simulados — DE Professional <small>(exame novo)</small></h1>
+    <div class="tabs" id="tabs"></div>
+    <select id="theme" title="Tema">
+      <option value="auto">Auto</option><option value="light">Claro</option><option value="dark">Escuro</option>
+    </select>
+  </div>
+  <div class="bar"><i id="progbar"></i></div>
+  <div class="meta">
+    <label title="Valida e explica a cada resposta"><input type="checkbox" id="study"> <b>Feedback na hora</b></label>
+    <span>Respondidas: <b id="answered">0</b>/<b id="total">0</b></span>
+    <span>Timer: <b id="timer">120:00</b></span>
+    <span id="status" class="hint"></span>
+  </div>
+</header>
+
+<main id="main"><div class="empty" id="empty"></div></main>
+
+<div id="resultsWrap" style="max-width:900px;margin:0 auto;padding:0 16px;">
+  <div id="results"></div>
+</div>
+
+<footer>
+  <div class="frow">
+    <button class="ghost" id="btnUnanswered">Ir p/ não respondida</button>
+    <label class="hint"><input type="checkbox" id="onlyWrong"> só erradas</label>
+    <span class="spacer"></span>
+    <button class="ghost" id="btnReset">Limpar respostas</button>
+    <button class="primary" id="btnSubmit">Finalizar e ver resumo</button>
+  </div>
+</footer>
+
+<script src="questions.js"></script>
+<script>
+(function(){
+  "use strict";
+  var DATA = window.SIMULADOS || null;
+  var LS = {
+    get:function(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+    set:function(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+    del:function(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  };
+  var PASS = 0.70;
+  var $ = function(id){ return document.getElementById(id); };
+  var current = LS.get("depro_current") || (DATA ? Object.keys(DATA)[0] : null);
+  var studyMode = LS.get("depro_study"); if(studyMode===null) studyMode = true;  // default: feedback na hora
+
+  // theme
+  var themeSel = $("theme");
+  var savedTheme = LS.get("depro_theme") || "auto";
+  themeSel.value = savedTheme; applyTheme(savedTheme);
+  themeSel.onchange = function(){ LS.set("depro_theme", themeSel.value); applyTheme(themeSel.value); };
+  function applyTheme(t){ if(t==="auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t); }
+
+  if(!DATA){
+    $("empty").innerHTML = "<h2>Dados ainda não gerados</h2><p>O arquivo <code>questions.js</code> não foi encontrado ao lado deste HTML.<br>Ele é gerado a partir dos simulados finalizados.</p>";
+    $("study").disabled = true;
+    return;
+  }
+
+  $("study").checked = studyMode;
+  $("study").onchange = function(){ studyMode = this.checked; LS.set("depro_study", studyMode); render(); };
+
+  function keyAns(s){ return "depro_ans_"+s; }
+  function keySub(s){ return "depro_sub_"+s; }
+  function keyTimer(s){ return "depro_timer_"+s; }
+
+  function getAns(){ return LS.get(keyAns(current)) || {}; }
+  function setAns(a){ LS.set(keyAns(current), a); }
+  function isSubmitted(){ return !!LS.get(keySub(current)); }
+  // uma questão fica "revelada" se: prova finalizada, OU modo estudo e já respondida
+  function shouldReveal(q, ans){ return isSubmitted() || (studyMode && !!ans[q.id]); }
+
+  function buildTabs(){
+    var t = $("tabs"); t.innerHTML = "";
+    Object.keys(DATA).forEach(function(sid){
+      var b = document.createElement("button");
+      b.className = "tab" + (sid===current ? " active":"");
+      b.textContent = DATA[sid].title || sid;
+      b.onclick = function(){ current = sid; LS.set("depro_current", sid); render(); };
+      t.appendChild(b);
+    });
+  }
+
+  function buildCard(q){
+    var ans = getAns(), submitted = isSubmitted(), reveal = shouldReveal(q, ans);
+    var card = document.createElement("div");
+    card.className = "q" + (reveal ? " reviewed":"");
+    card.id = "q"+q.id;
+    var dom = (q.domain||"") + (q.topic ? " — "+q.topic : "");
+    var h = '<div><span class="num">'+q.id+'.</span><span class="badge">'+esc(dom)+'</span></div>';
+    h += '<div class="qtext">'+esc(q.text)+'</div>';
+    ["A","B","C","D"].forEach(function(L){
+      if(q.options[L]==null) return;
+      var sel = ans[q.id]===L;
+      var cls = "opt" + (sel?" sel":"");
+      if(reveal){ if(L===q.answer) cls+=" correct"; else if(sel) cls+=" wrong"; }
+      // radios travam só na prova finalizada; no modo estudo continuam editáveis
+      var dis = submitted ? " disabled" : "";
+      h += '<label class="'+cls+'"><input type="radio" name="q'+q.id+'" value="'+L+'"'+(sel?" checked":"")+dis+'>'
+         + '<span class="lk">'+L+')</span>'+esc(q.options[L])+'</label>';
+      if(reveal && q.optExpl && q.optExpl[L]) h += '<div class="optnote '+(L===q.answer?"ok":"bad")+'">'+esc(q.optExpl[L])+'</div>';
+    });
+    var chosen = ans[q.id];
+    var correct = chosen===q.answer;
+    var vtxt = !chosen ? "" : (correct ? "✓ Correta ("+q.answer+")"
+                : "✗ Você marcou "+chosen+" — correta é "+q.answer);
+    h += '<div class="verdict '+(correct?"ok":"bad")+'">'+vtxt+'</div>';
+    if(q.explanation) h += '<div class="expl"><b>Por quê:</b> '+esc(q.explanation)+'</div>';
+    card.innerHTML = h;
+    wireRadios(card, q);
+    return card;
+  }
+
+  function wireRadios(card, q){
+    card.querySelectorAll('input[type=radio]').forEach(function(r){
+      r.onchange = function(){
+        var a = getAns(); a[q.id] = this.value; setAns(a);
+        var fresh = buildCard(q);           // rebuild p/ mostrar veredito/explicação na hora
+        card.replaceWith(fresh);
+        updateProgress();
+        if(isSubmitted()) renderResults(true);
+      };
+    });
+  }
+
+  function render(){
+    buildTabs();
+    var sim = DATA[current], qs = sim.questions || [], ans = getAns();
+    var main = $("main"); main.innerHTML = "";
+    $("total").textContent = qs.length;
+    var onlyWrong = $("onlyWrong").checked;
+    qs.forEach(function(q){
+      if(onlyWrong && shouldReveal(q, ans) && ans[q.id]===q.answer) return;  // esconde acertadas
+      main.appendChild(buildCard(q));
+    });
+    updateProgress();
+    renderResults(isSubmitted());
+    startTimer();
+  }
+
+  function updateProgress(){
+    var qs = DATA[current].questions, ans = getAns();
+    var n = qs.filter(function(q){ return ans[q.id]; }).length;
+    $("answered").textContent = n;
+    $("progbar").style.width = qs.length ? (100*n/qs.length)+"%" : "0%";
+    $("status").textContent = isSubmitted() ? "Finalizado — salvo" : (studyMode ? "Modo estudo — feedback na hora" : "Modo prova — salvo automaticamente");
+  }
+
+  function renderResults(submitted){
+    var box = $("results");
+    if(!submitted){ box.className=""; box.innerHTML=""; return; }
+    var qs = DATA[current].questions, ans = getAns();
+    var correct = qs.filter(function(q){ return ans[q.id]===q.answer; }).length;
+    var pct = qs.length ? correct/qs.length : 0, pass = pct>=PASS;
+    var dom = {};
+    qs.forEach(function(q){ var d=q.domain||"?"; dom[d]=dom[d]||{t:0,c:0}; dom[d].t++; if(ans[q.id]===q.answer) dom[d].c++; });
+    var rows = Object.keys(dom).sort().map(function(d){
+      var o=dom[d], p=Math.round(100*o.c/o.t);
+      return '<tr><td>'+esc(d)+'</td><td class="n">'+o.c+'/'+o.t+'</td><td class="n">'+p+'%</td></tr>';
+    }).join("");
+    box.className="show";
+    box.innerHTML = '<div class="score '+(pass?"pass":"fail")+'">'+Math.round(pct*100)+'% · '+correct+'/'+qs.length+'</div>'
+      + '<div class="hint">Corte de referência ~70%. '+(pass?"Acima do corte 🎯":"Abaixo do corte — revise as erradas.")+'</div>'
+      + '<table><thead><tr><th>Domínio</th><th class="n">Acertos</th><th class="n">%</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+
+  var timerInt=null;
+  function startTimer(){
+    clearInterval(timerInt);
+    if(isSubmitted()){ $("timer").textContent = "—"; return; }
+    var st = LS.get(keyTimer(current));
+    if(!st){ st = Date.now(); LS.set(keyTimer(current), st); }
+    function tick(){
+      var left = 120*60 - Math.floor((Date.now()-st)/1000);
+      if(left<=0){ left=0; clearInterval(timerInt); }
+      var m=Math.floor(left/60), s=left%60;
+      $("timer").textContent = (m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+    }
+    tick(); timerInt=setInterval(tick,1000);
+  }
+
+  $("btnSubmit").onclick = function(){
+    var qs = DATA[current].questions, ans = getAns();
+    var missing = qs.filter(function(q){ return !ans[q.id]; }).length;
+    var msg = missing ? ("Faltam "+missing+" sem resposta. Finalizar mesmo assim?") : "Finalizar e ver resumo?";
+    if(!confirm(msg)) return;
+    LS.set(keySub(current), true); render();
+    $("results").scrollIntoView({behavior:"smooth", block:"start"});
+  };
+  $("btnReset").onclick = function(){
+    if(!confirm("Limpar respostas, correção e timer deste simulado?")) return;
+    LS.del(keyAns(current)); LS.del(keySub(current)); LS.del(keyTimer(current));
+    $("onlyWrong").checked=false; render();
+  };
+  $("onlyWrong").onchange = render;
+  $("btnUnanswered").onclick = function(){
+    var qs=DATA[current].questions, ans=getAns();
+    var q = qs.find(function(x){ return !ans[x.id]; });
+    if(q){ var el=$("q"+q.id); if(el) el.scrollIntoView({behavior:"smooth",block:"center"}); }
+    else alert("Todas respondidas ✓");
+  };
+
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  render();
+})();
+</script>
+</body>
+</html>
