@@ -1,43 +1,43 @@
-# Databricks Data Engineer Professional — kit de estudo
+# Databricks Data Engineer Professional — study kit
 
-Kit de preparação final para o **Databricks Certified Data Engineer Professional**, versão do exame válida **a partir de 9-out-2026** (60 questões, 120 min, em inglês, 9 seções).
+Final-review kit for the **Databricks Certified Data Engineer Professional** exam, version live **from Oct 9, 2026** (60 questions, 120 minutes, English, 9 sections).
 
-> As questões dos simulados são **originais, de prática**. Não são questões oficiais do exame. Os gabaritos seguem a documentação da Databricks, mas a fonte de verdade é o [guia oficial do exame](https://www.databricks.com/learn/certification/data-engineer-professional) e a [documentação](https://docs.databricks.com). Reconfirme as features antes da prova.
+> The practice exam questions are **original practice questions**, not official exam questions. Answers follow the Databricks documentation, but the source of truth is the [official exam guide](https://www.databricks.com/learn/certification/data-engineer-professional) and the [documentation](https://docs.databricks.com). Verify features before the exam.
 
-## Simulados (app)
+## Practice exams (app)
 
-**Abrir:** `https://<usuario>.github.io/<repo>/`
+**Open:** https://rsanastacio.github.io/databricks-de-professional-prep/
 
-- 2 simulados × 60 questões, distribuídas pelos pesos oficiais dos domínios.
-- **Feedback na hora**: mostra o veredito, explica o porquê e traz uma justificativa para **cada alternativa** (por que a correta está certa e por que as outras estão erradas).
-- **Modo prova**: com o feedback desligado, a correção aparece só no fim, com score por domínio contra o corte de ~70%.
-- Timer de 120 min, "revisar erradas", progresso salvo no aparelho.
+- 2 practice exams × 60 questions, weighted like the official exam domains.
+- **Instant feedback**: shows the verdict, explains why, and gives a rationale for **every option** (why the correct one is right and why each distractor is wrong).
+- **Exam mode**: with instant feedback off, grading appears only at the end, with a score per domain against the ~70% pass mark.
+- 120-minute timer, "review incorrect", progress saved on the device.
 
-### No iPhone
-1. Abra a URL no **Safari**. Pela pré-visualização do app Arquivos/Mail não funciona, porque ela não roda JavaScript.
-2. Compartilhar → **Adicionar à Tela de Início**.
-3. Use sempre pelo ícone. Depois do primeiro acesso, ele **funciona offline**.
+### On iPhone
+1. Open the URL in **Safari**. Opening the HTML file from the Files or Mail preview does not work, because that preview does not run JavaScript.
+2. Share → **Add to Home Screen**.
+3. Always launch it from the icon. After the first visit it **works offline**.
 
-O progresso fica salvo no aparelho, separado por contexto: o ícone da Tela de Início e a aba do Safari não compartilham respostas.
+Progress is stored on the device, per context: the Home Screen icon and a Safari tab do not share answers.
 
-Versão desktop (layout com todas as questões numa página): `desktop/`.
+Desktop version (every question on one page): [`desktop/`](https://rsanastacio.github.io/databricks-de-professional-prep/desktop/).
 
-## Material
+## Study material
 
-| Arquivo | Conteúdo |
+| File | Contents |
 |---|---|
-| [docs/PLANO_ESTUDO.md](docs/PLANO_ESTUDO.md) | Plano de 14 dias por peso de domínio + cheat sheet + tracker |
-| [docs/MATERIAL_ESTUDO.md](docs/MATERIAL_ESTUDO.md) | Recap dos 9 domínios, heurísticas de decisão, AUTO CDC/SCD |
-| [docs/SIMULADO_1.md](docs/SIMULADO_1.md) · [docs/SIMULADO_2.md](docs/SIMULADO_2.md) | Questões + gabarito com explicações (fonte do app) |
-| [docs/plano_cert_de_pro.ics](docs/plano_cert_de_pro.ics) | Agenda dos 14 dias para importar no calendário |
+| [docs/STUDY_PLAN.md](docs/STUDY_PLAN.md) | 14-day plan ordered by domain weight + cheat sheet + score tracker |
+| [docs/STUDY_GUIDE.md](docs/STUDY_GUIDE.md) | Recap of the 9 domains, decision heuristics, AUTO CDC/SCD deep dive |
+| [docs/PRACTICE_EXAM_1.md](docs/PRACTICE_EXAM_1.md) · [docs/PRACTICE_EXAM_2.md](docs/PRACTICE_EXAM_2.md) | Questions + answer key with explanations (source for the app) |
+| [docs/study_plan.ics](docs/study_plan.ics) | The 14-day schedule, to import into a calendar |
 
-## Regenerar o app
+## Rebuilding the app
 
-Depois de editar `docs/SIMULADO_*.md` ou `data/just_*.json`:
+After editing `docs/PRACTICE_EXAM_*.md` or `data/option_rationales_*.json`:
 
 ```bash
-python3 scripts/parse_simulados.py   # valida e gera desktop/questions.js
-python3 scripts/build_mobile.py      # gera index.html, sw.js, manifest e ícones
+python3 scripts/parse_practice_exams.py   # validates and writes desktop/questions.js
+python3 scripts/build_mobile.py      # writes index.html, sw.js, manifest and icons
 ```
 
-O `sw.js` muda de versão a cada build, então quem já instalou recebe a atualização ao abrir o app com internet.
+`sw.js` gets a new version on every build, so installed copies pick up the update the next time they open with a connection.

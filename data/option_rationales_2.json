@@ -1,0 +1,362 @@
+{
+  "1": {
+    "A": "Incorrect: forceDeleteTempCheckpointLocation clears old checkpoints, not delay tolerance — watermark requires explicit configuration.",
+    "B": "Correct: watermark('event_timestamp', '10 minutes') defines delay tolerance for late event reprocessing; outputMode='append' is recommended for streaming with state.",
+    "C": "Incorrect: microBatchMs and chkpointLocation set timing and location, not delay tolerance — lacks explicit watermark definition.",
+    "D": "Incorrect: mergeSchema addresses schema evolution, not watermark — replicating query across executors does not affect delay tolerance."
+  },
+  "2": {
+    "A": "Incorrect: Physical replication is for disaster recovery standby; Logical Decoding (not physical) is native CDC mechanism.",
+    "B": "Correct: Logical Decoding, WAL level logical, and permanent replication slot are critical prerequisites for change capture in Lakeflow Connect.",
+    "C": "Incorrect: Audit triggers have high overhead and lack transactional consistency — Logical Decoding is native CDC mechanism.",
+    "D": "Incorrect: FDW (Foreign Data Wrapper) enables remote queries, not change capture — CDC requires Logical Decoding on PostgreSQL."
+  },
+  "3": {
+    "A": "Incorrect: get_json_object() operates on JSON string, not VARIANT — requires prior cast and is less efficient.",
+    "B": "Incorrect: Bracket syntax data['user']['email'] is valid but less explicit than variant_get with defined type.",
+    "C": "Correct: variant_get(data, 'user.email', 'string') is native VARIANT constructor with NULL fallback and explicit type — idiomatic in Databricks.",
+    "D": "Incorrect: to_json() plus regex is costly (serialization plus pattern matching) versus native variant_get."
+  },
+  "4": {
+    "A": "Incorrect: Driver logs are useful for deep debugging, but Spark UI streaming tab shows aggregated metrics faster.",
+    "B": "Correct: Input rate vs. processing rate on Spark Streaming tab immediately shows back-pressure — direct diagnosis.",
+    "C": "Incorrect: Increasing partitions without diagnosis is 'turning screws' — back-pressure may come from I/O, not partitions.",
+    "D": "Incorrect: Full checklist (Kafka lag, checkpoint I/O) is valid but less direct than throughput metrics in Spark UI."
+  },
+  "5": {
+    "A": "Correct: Deletion vectors avoid rewriting files on deletes — CLUSTER BY auto optimizes layout — Delta cache stores hot data.",
+    "B": "Incorrect: Daily OPTIMIZE is fixed overhead, not continuous — more workers do not reduce small write latency.",
+    "C": "Incorrect: MVCC is essential for Databricks concurrency — date partitioning does not solve small write fragmentation.",
+    "D": "Incorrect: Native Parquet loses ACID transactions — S3 Select does not apply to writes (read-only)."
+  },
+  "6": {
+    "A": "Incorrect: CLUSTER BY is for layout optimization (Z-order), not masking policy.",
+    "B": "Correct: ABAC in UC with governed tags applies policy automatically to new columns marked with tag pii — native Databricks solution.",
+    "C": "Incorrect: Masked views must be created manually; do not auto-apply to future-created tables.",
+    "D": "Incorrect: AI functions are transformation functions, not policy engine — CHECK constraint is validation, not masking."
+  },
+  "7": {
+    "A": "Correct: UC Metric Views offer centralized governed definition — Materialized Views pre-aggregate for performance — complement each other.",
+    "B": "Incorrect: DLT orchestrates pipelines with quality expectations, not centralized governance metrics.",
+    "C": "Incorrect: Nightly Python job is batch, not continuous — not centralized solution (each dashboard copies query).",
+    "D": "Incorrect: GET_METRIC is not native Databricks function — each dashboard writes separate query."
+  },
+  "8": {
+    "A": "Incorrect: CURRENT_DATE() changes daily — in scheduled job, does not guarantee consistent rolling window between runs.",
+    "B": "Correct: Passing date as parameter via spark.conf ensures fixed value for the run — 7-day window is consistent.",
+    "C": "Incorrect: {{task.run_id}} is run ID, not date — dbutils.notebook.run() passes base_parameters but run_id is inappropriate.",
+    "D": "Incorrect: Checkpoint tracks streaming state, not window date — not appropriate parametrization mechanism."
+  },
+  "9": {
+    "A": "Correct: Hour-by-hour parallelization over 3 years (~26k hours) is scalable — saving raw to Delta before processing is robust (retry-friendly).",
+    "B": "Incorrect: Single call for 3 years is serial with timeout risk — BLOB column is inefficient for later parsing.",
+    "C": "Incorrect: Lakeflow Connect is for database sources (PostgreSQL, Teradata), not REST API.",
+    "D": "Incorrect: Daily granularity is less parallelizable than hourly — mergeSchema without necessity is overhead."
+  },
+  "10": {
+    "A": "Correct: CDF captures only incremental changes from shipments — MERGE combines with orders snapshot — efficient.",
+    "B": "Incorrect: DELETE plus INSERT full join is complete refresh — inefficient for large volume with small changes.",
+    "C": "Incorrect: MV REFRESH rescans both tables — does not leverage CDF incremental changes.",
+    "D": "Incorrect: Streaming for join with batch snapshot is more complex architecture than simple incremental MERGE."
+  },
+  "11": {
+    "A": "Correct: Serverless compute charges per use (ad-hoc is pay-as-you-go) — dedicated warehouse is hourly, optimized for dashboards — combo reduces idle cost.",
+    "B": "Incorrect: Delta cache is complementary, not base-cost reduction — reducing workers hurts predictable dashboard performance.",
+    "C": "Incorrect: Partitioning plus CLUSTER BY improve performance, not idle cost of 100-worker warehouse.",
+    "D": "Incorrect: Converting to MV and disabling cache improves only refresh, not base warehouse idle cost."
+  },
+  "12": {
+    "A": "Incorrect: Python RDD plus loop forfeit Spark SQL optimization — explode plus Python iteration very slow for complex transformations.",
+    "B": "Correct: Native SQL with VARIANT (variant_get, etc) optimized by Catalyst optimizer — better performance.",
+    "C": "Incorrect: VARIANT → JSON string → Python parse → reassemble is multiple serializations — high overhead.",
+    "D": "Incorrect: getItem() is valid Column API, but SQL native with explode/lateral/FLATTEN is more idiomatic and optimized."
+  },
+  "13": {
+    "A": "Incorrect: system.views.materialized_views may have metadata, but TBLPROPERTIES is more direct for last_refresh_time.",
+    "B": "Incorrect: DESCRIBE DETAIL shows base table changes, not MV refresh status.",
+    "C": "Correct: SHOW TBLPROPERTIES on MV returns last_refresh_time — most direct staleness diagnosis.",
+    "D": "Incorrect: Cluster cost does not indicate if refresh was running or staleness is from expired refresh."
+  },
+  "14": {
+    "A": "Incorrect: Replicating tables across workspaces is overhead — loses centralized sharing benefit.",
+    "B": "Correct: Open Sharing (UC-native share across Databricks workspaces) plus D2D allows permission granularity per workspace.",
+    "C": "Incorrect: Delegated views plus workspace_id UDF is custom, not native — Open Sharing is native solution.",
+    "D": "Incorrect: ALTER TABLE OWNER does not share table — recreating in each workspace replicates data."
+  },
+  "15": {
+    "A": "Incorrect: Old JAR cache is possible, but 'reimporting libraries' is true fix — deserialization is class mismatch.",
+    "B": "Correct: Dependency mismatch (lib upgraded on cluster but job ran with old version) causes task deserialization error — fix is review libs.",
+    "C": "Incorrect: Checkpoint corruption gives checkpoint read/write error, not task deserialization error.",
+    "D": "Incorrect: DB timeout causes network/connection error, not task deserialization error."
+  },
+  "16": {
+    "A": "Incorrect: GRANT CONNECT necessary, but LDAP LogMech on Teradata is critical missing prerequisite.",
+    "B": "Correct: LDAP LogMech enabled on Teradata plus port ODBC (1025/TCP default) plus LDAP user permission = complete setup.",
+    "C": "Incorrect: FDW is PostgreSQL feature, not Teradata — Teradata uses ODBC/TDDSQL for connection.",
+    "D": "Incorrect: Teradata viewpoints is legacy — modern Lakebridge uses direct access via LDAP."
+  },
+  "17": {
+    "A": "Correct: @quality_expectation or EXPECT statement with action fail is native DLT — pipeline fails if violated.",
+    "B": "Incorrect: IF/THEN/RAISE is non-standard procedural SQL — RAISE is not native Databricks SQL function.",
+    "C": "Incorrect: Stored procedure with manual raise_error is workaround; not idiomatic DLT expectation.",
+    "D": "Incorrect: Filtering silently does not fail pipeline — requirement is 'fail if > 5%' records invalid."
+  },
+  "18": {
+    "A": "Incorrect: CLUSTER BY complements but does not solve 'file count exploding' — EXPIRE_SNAPSHOTS is essential.",
+    "B": "Incorrect: OPTIMIZE is Delta (not Iceberg native) — Iceberg uses EXPIRE_SNAPSHOTS for snapshot cleanup.",
+    "C": "Correct: Partition by date in Iceberg plus EXPIRE_SNAPSHOTS removes old snapshots, reducing metadata.",
+    "D": "Incorrect: Converting to Delta does not solve Iceberg performance — question asks Iceberg optimization."
+  },
+  "19": {
+    "A": "Incorrect: MERGE with UPDATE/INSERT is manual requiring explicit SCD Type 2 logic — not auto-optimized.",
+    "B": "Incorrect: DELETE plus INSERT OVERWRITE is destructive — data loss risk if error occurs.",
+    "C": "Correct: AUTO CDC in DLT with stored_as_scd_type=2 maintains SCD Type 2 automatically — idiomatic DLT.",
+    "D": "Incorrect: MV plus outer join is manual — less efficient than native AUTO CDC."
+  },
+  "20": {
+    "A": "Correct: Spark Streaming tab 'Input rate' vs. 'Processing rate' graph immediately shows back-pressure.",
+    "B": "Incorrect: Executor memory plus GC time shows GC pause, not consumer lag — lag is unprocessed events.",
+    "C": "Incorrect: kafka_consumer_lag is Kafka native metric, not exposed as standard Databricks Streaming tab metric.",
+    "D": "Incorrect: SQL tab is for SQL queries, not streaming lag — Streaming tab is correct location."
+  },
+  "21": {
+    "A": "Incorrect: CASE view can be bypassed by direct base table access — revoking access possible but less robust.",
+    "B": "Correct: RCS (Row and Column Security) in UC with policy on governed tag is native — applied in engine, cannot be bypassed.",
+    "C": "Incorrect: 'Dynamic Data Masking' is marketing term — UC implements via RCS, not separate feature.",
+    "D": "Incorrect: Replicating table plus roles is overhead — RCS is native masking policy solution."
+  },
+  "22": {
+    "A": "Incorrect: parquet.cacheMetadata caches metadata, but Parquet re-read re-does schema inference.",
+    "B": "Correct: Save to Delta (first run) plus read from Delta (later runs) = persistent optimized snapshot.",
+    "C": "Incorrect: cache()/persist() are in-memory (executor memory, not disk); does not persist between job runs.",
+    "D": "Incorrect: Iceberg is valid alternative but overhead — Delta write is more practical solution."
+  },
+  "23": {
+    "A": "Correct: Kafka → Structured Streaming with 500ms micro-batch offers low latency, fault tolerance, native checkpointing.",
+    "B": "Incorrect: Lakeflow Connect is for database sources (CDC), not event streams.",
+    "C": "Incorrect: Python HTTP loop direct = no ACID, no checkpointing, no fault tolerance — high risk.",
+    "D": "Incorrect: Auto Loader is for files (S3, GCS), not webhooks — latestFirst is non-existent option."
+  },
+  "24": {
+    "A": "Incorrect: EXISTS does not apply to arrays — would be scalar subquery, not array predicate.",
+    "B": "Incorrect: LATERAL FLATTEN disaggregates array to rows, but t.value:name is wrong syntax (should be t.name).",
+    "C": "Correct: ANY(array, lambda) is idiomatic array predicate — lambda applies AND logic on fields.",
+    "D": "Incorrect: array_contains checks membership; '> 100' as string is literal, not operator — cannot do comparison."
+  },
+  "25": {
+    "A": "Incorrect: CLUSTER BY auto is complementary; reordering SELECT columns does not change shuffle.",
+    "B": "Correct: Partitioning (prune partitions) plus Z-order (cluster rows) reduce shuffled data volume — efficient.",
+    "C": "Incorrect: AQE is complementary — broadcast for small join sides, not 80% shuffle.",
+    "D": "Incorrect: B-tree indexes not native in Databricks — Z-order is effective index used."
+  },
+  "26": {
+    "A": "Correct: max_retries plus retry_on_timeout in databricks.yml task definition is native Declarative Automation support.",
+    "B": "Incorrect: Python wrapper with try-except is possible but not native declarative — wrapper overhead.",
+    "C": "Incorrect: max_concurrent_runs controls concurrency, not retry — does not address task failure.",
+    "D": "Incorrect: Manual run_now is manual, not automated — not integrated in workflow."
+  },
+  "27": {
+    "A": "Incorrect: Adding user to data_officers group may work if group has permission, but not 'policy override'.",
+    "B": "Correct: ALTER POLICY ADD EXCEPTION allows granular exceptions for specific users — native ABAC solution.",
+    "C": "Incorrect: USE UNMASKED_COPY does not exist — trick question confirmed.",
+    "D": "Incorrect: Dedicated view is workaround; does not leverage native ABAC policy exception framework."
+  },
+  "28": {
+    "A": "Incorrect: collect() brings data to driver memory (OOM risk) — repartition plus groupByKey plus collect is antipattern.",
+    "B": "Correct: foreachPartition() (RDD) or foreachBatch() (DataFrame) process in batches — batch size limit prevents OOM.",
+    "C": "Incorrect: take(n) is selection function, not processing — not idiomatic for transformations.",
+    "D": "Incorrect: Increasing memory is fallback; true solution is distributed batch processing."
+  },
+  "29": {
+    "A": "Incorrect: Constraints validate values (NOT NULL, UNIQUE), not time-based freshness.",
+    "B": "Incorrect: SQL Warehouse query profiling is for performance, not table freshness monitoring.",
+    "C": "Correct: Validation job at 5:50 AM checking DESCRIBE DETAIL last_modified timestamp and emitting alert — common practice.",
+    "D": "Incorrect: Query Alert is for query result content, not table freshness metadata."
+  },
+  "30": {
+    "A": "Incorrect: CSV plus S3 pre-signed URL is outside governance — sensitive data without audit trail.",
+    "B": "Correct: Open Sharing (partner with Databricks account) plus Clean Rooms (managed sharing) are native UC.",
+    "C": "Incorrect: View with SELECT via shared role is workaround — Open Sharing is native.",
+    "D": "Incorrect: Replicating to workspace is overhead — sharing is native solution."
+  },
+  "31": {
+    "A": "Incorrect: Daily SELECT * plus mergeSchema is full refresh — inefficient for 500M plus 10M/day growth.",
+    "B": "Incorrect: READ_FROM with sequence column plus WHERE > last_value is standard, but Lakeflow CDC is more robust.",
+    "C": "Correct: Lakeflow Connect CDC (if DB supports) captures native changes — JDBC parameterized sequence is fallback.",
+    "D": "Incorrect: Apache Sqoop is legacy; Lakeflow Connect is modern native Databricks solution."
+  },
+  "32": {
+    "A": "Correct: TEMP VIEW lives only in SQL session — parallelism (dbutils.notebook.run, tasks) = new session = no access. Use `CREATE VIEW` or `GLOBAL TEMP VIEW`.",
+    "B": "Incorrect: TEMP VIEW is session-local; parallelism = new session = TEMP VIEW invisible — risk exists.",
+    "C": "Incorrect: spark.parallelize() creates RDD, does not reuse view — not correct solution.",
+    "D": "Incorrect: OVERWRITE is write mode, does not solve TEMP VIEW scope across sessions."
+  },
+  "33": {
+    "A": "Incorrect: Normal (non-materialized) views re-scan each query — worse than MV.",
+    "B": "Incorrect: Metric Views plus 1 MV is more complex — does not reduce base cost of 3 MV refreshes.",
+    "C": "Correct: Combine 3 refreshes into 1 job, use scheduled warehouses on/off auto. Amortizes startup overhead, pay only during refresh period.",
+    "D": "Incorrect: Manual refresh not scalable; automatic refresh necessary for standard BI."
+  },
+  "34": {
+    "A": "Incorrect: S3 path expiration or bucket deletion is possible cause of FileNotFoundError.",
+    "B": "Incorrect: IAM permission revocation or credential expiration is possible cause.",
+    "C": "Incorrect: New cluster may have different IAM role or missing mount config — possible cause.",
+    "D": "Correct: All above are possible. Validate logs, test path S3, check IAM credentials."
+  },
+  "35": {
+    "A": "Correct: `SELECT event_type, COUNT(*) FROM events GROUP BY event_type` is optimized by Catalyst. Idiomatic, efficient.",
+    "B": "Incorrect: CASE statements for each type is manual — less clean than native GROUP BY.",
+    "C": "Incorrect: Transform to VARIANT plus parse is unnecessary overhead.",
+    "D": "Incorrect: Views per type plus separate query is multiple passes — single GROUP BY efficient."
+  },
+  "36": {
+    "A": "Incorrect: outputMode='append' without checkpoint = no state tracking = at-least-once (duplicates possible).",
+    "B": "Correct: Checkpoint tracks offsets — idempotent writer (idempotency key) avoids duplicates — exactly-once guaranteed.",
+    "C": "Incorrect: Complete mode retains all aggregated data (memory overhead) — trigger(once=True) is single batch.",
+    "D": "Incorrect: Checkpoint alone is necessary but insufficient — also needs idempotent sink."
+  },
+  "37": {
+    "A": "Incorrect: Increasing partitions plus Z-order helps shuffle (40%), but parsing is 30% — does not address issue.",
+    "B": "Correct: Pre-parse JSON to VARIANT at ingestion = parse once — Delta cache avoids re-read — reduces 30%.",
+    "C": "Incorrect: Converting to Parquet does not help; Parquet is compression, not parse overhead.",
+    "D": "Incorrect: Increasing workers/partitions does not reduce parse operation — parallelizing does not reduce parsing if dataset small."
+  },
+  "38": {
+    "A": "Incorrect: Metadata table is extra indirection — less clean than standard COALESCE.",
+    "B": "Incorrect: DEFAULT parameter plus null-check in job is verbose — COALESCE is idiomatic.",
+    "C": "Correct: COALESCE(parameter_date, CURRENT_DATE()) = if parameter NULL, use CURRENT_DATE() — idiomatic.",
+    "D": "Incorrect: Hardcoding CURRENT_DATE() without parameter = no way to test with fixed date — poor design."
+  },
+  "39": {
+    "A": "Correct: %run is magic command (no context passing) — dbutils.notebook.run() with base_parameters dict passes variables.",
+    "B": "Incorrect: Relative path works within workspace — issue is %run does not pass context, not about path.",
+    "C": "Incorrect: dbutils.widgets.get() works in jobs if notebook called via dbutils.notebook.run() with base_parameters.",
+    "D": "Incorrect: %render does not exist (or unnecessary) — issue is %run vs dbutils.notebook.run()."
+  },
+  "40": {
+    "A": "Correct: MV refresh atomically replaces version — one query sees v1, other sees v2 = refresh occurred between them.",
+    "B": "Incorrect: Browser-local cache does not affect server-side query results — does not cause data inconsistency.",
+    "C": "Incorrect: Delta version history is possible with multiple versions, but MV refresh is likely cause.",
+    "D": "Incorrect: Data inconsistency not query bug — MV refresh timing is cause."
+  },
+  "41": {
+    "A": "Incorrect: Inverted logic (principal != X) not direct mode in ABAC — ABAC uses positive logic.",
+    "B": "Correct: ABAC allows 'positive rule': principal == 'data_engineers' → NO mask; else → mask.",
+    "C": "Incorrect: RLS for row filtering, not column masking — column masking is Column Security responsibility.",
+    "D": "Incorrect: Dual views is manual workaround — ABAC is native solution."
+  },
+  "42": {
+    "A": "Incorrect: map() without cache re-computes on each action — inefficient for costly transformation.",
+    "B": "Correct: cache().count() forces immediate computation and storage — later uses read from cache.",
+    "C": "Incorrect: SQL UDF is better than Python RDD, but question is how to cache efficiently.",
+    "D": "Incorrect: persist(DISK_ONLY) without count() is lazy — needs action to force computation."
+  },
+  "43": {
+    "A": "Incorrect: UC lineage shows data transformations, not access audit — does not distinguish which column accessed.",
+    "B": "Incorrect: UC access logs do not track column granularity — all logs show 'SELECT * FROM table'.",
+    "C": "Incorrect: Predictive Optimization is for query optimizer recommendations, not audit.",
+    "D": "Correct: Custom logging in UDF recording 'user X accessed column Y' plus external DB audit = real solution."
+  },
+  "44": {
+    "A": "Incorrect: UPDATE direct for targeted updates, but MERGE offers more semantics — not 'always better'.",
+    "B": "Incorrect: MERGE always better for large-scale changes, but Delta optimizes UPDATE for < 5%.",
+    "C": "Correct: Delta: MERGE for large-scale changes — UPDATE for < 5% rows (targeted efficient).",
+    "D": "Incorrect: Not equivalent in Delta — UPDATE optimized for small changes, MERGE for large."
+  },
+  "45": {
+    "A": "Correct: If code unchanged, table quality changed (compaction degrading, old Delta version).",
+    "B": "Incorrect: If cluster unchanged (worker count, type, memory), not cluster fault.",
+    "C": "Incorrect: Code unchanged — query hints unchanged.",
+    "D": "Incorrect: Delta cache expiration does not cause full scan degradation."
+  },
+  "46": {
+    "A": "Incorrect: spark.read.csv does not support native 'encoding' option — Spark assumes UTF-8.",
+    "B": "Correct: Auto Loader with cloudFiles.schemaInference=true plus native encoding detection supports variable CSV.",
+    "C": "Incorrect: file_modify_time is file filter — multiLine/charToEscapeQuoteEscaping are CSV format options.",
+    "D": "Incorrect: Auto Loader is flexible — supports variable encoding with schemaInference=true."
+  },
+  "47": {
+    "A": "Correct: collect() brings 1M rows to driver JVM heap — real OOM risk = real problem.",
+    "B": "Incorrect: PySpark does not auto-manage collect() — collect() is eager action materializing.",
+    "C": "Incorrect: df stays in executor memory until collect() — collect() materializes to driver.",
+    "D": "Incorrect: collect() failure does not depend on partition count — always brings to driver."
+  },
+  "48": {
+    "A": "Incorrect: 'governance rules' with 'automatic pattern matching' not standard native phrasing.",
+    "B": "Correct: Job scanning schema, identifying columns with 'ssn'/'pii' in name, then ALTER TABLE SET TAG is common workaround.",
+    "C": "Incorrect: Predictive Optimization is for performance recommendation, not tag suggestion.",
+    "D": "Incorrect: ABAC policy does not create tags — policy consumes applied tags."
+  },
+  "49": {
+    "A": "Incorrect: Partition imbalance plus spill are possible, but does not offer solution (only diagnosis).",
+    "B": "Incorrect: Increasing memory may not resolve if problem is spill (full disk) or imbalance.",
+    "C": "Incorrect: Job may be scalable with repartition — does not need rewrite.",
+    "D": "Correct: If increasing executor memory does not resolve OOM and not driver OOM, issue is spill or partition imbalance — repartition() resolves."
+  },
+  "50": {
+    "A": "Incorrect: repartition() may help parallelization, but cache().count() better for exploration.",
+    "B": "Correct: df.map(func).cache().count() forces computation plus caches result — safe for exploratory analysis.",
+    "C": "Incorrect: foreachPartition() is for batch processing, not interactive exploration.",
+    "D": "Incorrect: Increasing driver memory is fallback, not solution for batch processing."
+  },
+  "51": {
+    "A": "Incorrect: UNIQUE constraint on ID = fails if ID exists (duplicate webhook) — error on INSERT.",
+    "B": "Incorrect: INSERT IGNORE does not exist in Delta — Delta has no 'ignore' native semantics.",
+    "C": "Correct: MERGE with WHEN NOT MATCHED INSERT = inserts only if ID not exists — efficient deduplication.",
+    "D": "Incorrect: INSERT DISTINCT = removes duplicates, but DISTINCT on JSON/complex types may not be deterministic."
+  },
+  "52": {
+    "A": "Incorrect: OPTIMIZE full table with Z-order = full scan all data (costly for daily growth).",
+    "B": "Correct: OPTIMIZE on specific partition (WHERE date = TODAY) = compacts only new partition.",
+    "C": "Incorrect: Incremental compaction not built-in; repartition is workaround.",
+    "D": "Incorrect: Auto OPTIMIZE possible in Databricks (Predictive Optimization), but requires additional config."
+  },
+  "53": {
+    "A": "Incorrect: Race condition plus Delta locking = possible cause of intermittent failure.",
+    "B": "Incorrect: Random network timeout = possible cause of intermittent failure.",
+    "C": "Incorrect: Cluster scale-down intermittent = possible cause of intermittent failure.",
+    "D": "Correct: 50% intermittent = multiple possible causes — need cluster metrics plus warehouse logs."
+  },
+  "54": {
+    "A": "Correct: 3 roles (analysts, engineers, admins) plus specific GRANT = standard UC scalable approach.",
+    "B": "Incorrect: Role inheritance possible in UC, but 'EXTEND' keyword not standard in GRANT.",
+    "C": "Incorrect: GRANT per individual user = not scalable (user change = manual update).",
+    "D": "Incorrect: ALTER TABLE OWNER periodically = not GRANT mechanism — ownership does not substitute GRANT."
+  },
+  "55": {
+    "A": "Incorrect: Kafka lag = possible, but '30 days' pattern points to state accumulation.",
+    "B": "Incorrect: Checkpoint exploding = possible, but '30 days' points to state old (watermark not expiring).",
+    "C": "Incorrect: Shuffle memory growing = possible, but less likely after '30 days'.",
+    "D": "Correct: Latency in streaming grows after 30 days — window state accumulating. Watermark stuck (not advancing) = state not expiring."
+  },
+  "56": {
+    "A": "Incorrect: Query count = volume, not impact — does not convince on performance.",
+    "B": "Incorrect: Cost per query = waste, but does not show UX impact (users waiting long).",
+    "C": "Correct: P95 latency = '95% queries > X seconds' (poor UX) plus cost total = waste plus user impact.",
+    "D": "Incorrect: Warehouse size = capacity, not latency — no direct correlation with performance."
+  },
+  "57": {
+    "A": "Incorrect: spark.conf does not control table locality — not native mechanism.",
+    "B": "Incorrect: Compute-level ACL not native UC feature ('if supported' = maybe not).",
+    "C": "Correct: Replicate PII in UC schema plus dedicated compute = physical plus logical isolation (closest native).",
+    "D": "Incorrect: 'table locality restriction' not native feature — manual implementation."
+  },
+  "58": {
+    "A": "Incorrect: explode_outer plus Python RDD = no Spark SQL optimization.",
+    "B": "Correct: Native SQL with VARIANT = optimized by Catalyst optimizer.",
+    "C": "Incorrect: VARIANT → JSON → Python = multiple serializations overhead.",
+    "D": "Incorrect: getItem() is Column API — less direct than native SQL with VARIANT."
+  },
+  "59": {
+    "A": "Correct: parse_json() once to VARIANT = 'memoized' — multiple variant_get() read cached VARIANT.",
+    "B": "Incorrect: Spark SQL not 'smart' enough to deduplicate parse_json calls — N calls = N parses.",
+    "C": "Incorrect: Python parse plus SQL parse = hybrid overhead.",
+    "D": "Incorrect: get_json_object() N times = N parses — Spark does not deduplicate (unlike VARIANT memoization)."
+  },
+  "60": {
+    "A": "Incorrect: Large checkpoint possible, but '30 days' points to state accumulation (watermark).",
+    "B": "Correct: Window state accumulating after 30 days — watermark expired (not advancing) or offset tracking fails.",
+    "C": "Incorrect: Pod memory leak = Databricks not natively Kubernetes (clusters are cloud VMs).",
+    "D": "Incorrect: Python GC degradation = unlikely cause of latency jump after '30 days'."
+  }
+}

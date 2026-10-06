@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simulados DE Professional</title>
+<title>DE Professional Practice Exams</title>
 <style>
   :root {
     --bg: #f5f6f8; --card: #ffffff; --ink: #1a1a1a; --muted: #666;
@@ -83,16 +83,16 @@
 <body>
 <header>
   <div class="hrow">
-    <h1>Simulados — DE Professional <small>(exame novo)</small></h1>
+    <h1>Practice Exams — DE Professional <small>(new exam)</small></h1>
     <div class="tabs" id="tabs"></div>
-    <select id="theme" title="Tema">
-      <option value="auto">Auto</option><option value="light">Claro</option><option value="dark">Escuro</option>
+    <select id="theme" title="Theme">
+      <option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
     </select>
   </div>
   <div class="bar"><i id="progbar"></i></div>
   <div class="meta">
-    <label title="Valida e explica a cada resposta"><input type="checkbox" id="study"> <b>Feedback na hora</b></label>
-    <span>Respondidas: <b id="answered">0</b>/<b id="total">0</b></span>
+    <label title="Grade and explain each answer immediately"><input type="checkbox" id="study"> <b>Instant feedback</b></label>
+    <span>Answered: <b id="answered">0</b>/<b id="total">0</b></span>
     <span>Timer: <b id="timer">120:00</b></span>
     <span id="status" class="hint"></span>
   </div>
@@ -106,11 +106,11 @@
 
 <footer>
   <div class="frow">
-    <button class="ghost" id="btnUnanswered">Ir p/ não respondida</button>
-    <label class="hint"><input type="checkbox" id="onlyWrong"> só erradas</label>
+    <button class="ghost" id="btnUnanswered">Next unanswered</button>
+    <label class="hint"><input type="checkbox" id="onlyWrong"> incorrect only</label>
     <span class="spacer"></span>
-    <button class="ghost" id="btnReset">Limpar respostas</button>
-    <button class="primary" id="btnSubmit">Finalizar e ver resumo</button>
+    <button class="ghost" id="btnReset">Reset answers</button>
+    <button class="primary" id="btnSubmit">Finish and see results</button>
   </div>
 </footer>
 
@@ -127,7 +127,7 @@
   var PASS = 0.70;
   var $ = function(id){ return document.getElementById(id); };
   var current = LS.get("depro_current") || (DATA ? Object.keys(DATA)[0] : null);
-  var studyMode = LS.get("depro_study"); if(studyMode===null) studyMode = true;  // default: feedback na hora
+  var studyMode = LS.get("depro_study"); if(studyMode===null) studyMode = true;
 
   // theme
   var themeSel = $("theme");
@@ -137,7 +137,7 @@
   function applyTheme(t){ if(t==="auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t); }
 
   if(!DATA){
-    $("empty").innerHTML = "<h2>Dados ainda não gerados</h2><p>O arquivo <code>questions.js</code> não foi encontrado ao lado deste HTML.<br>Ele é gerado a partir dos simulados finalizados.</p>";
+    $("empty").innerHTML = "<h2>Data not generated yet</h2><p><code>questions.js</code> was not found next to this HTML file.<br>Generate it with <code>scripts/parse_practice_exams.py</code>.</p>";
     $("study").disabled = true;
     return;
   }
@@ -152,7 +152,6 @@
   function getAns(){ return LS.get(keyAns(current)) || {}; }
   function setAns(a){ LS.set(keyAns(current), a); }
   function isSubmitted(){ return !!LS.get(keySub(current)); }
-  // uma questão fica "revelada" se: prova finalizada, OU modo estudo e já respondida
   function shouldReveal(q, ans){ return isSubmitted() || (studyMode && !!ans[q.id]); }
 
   function buildTabs(){
@@ -179,7 +178,6 @@
       var sel = ans[q.id]===L;
       var cls = "opt" + (sel?" sel":"");
       if(reveal){ if(L===q.answer) cls+=" correct"; else if(sel) cls+=" wrong"; }
-      // radios travam só na prova finalizada; no modo estudo continuam editáveis
       var dis = submitted ? " disabled" : "";
       h += '<label class="'+cls+'"><input type="radio" name="q'+q.id+'" value="'+L+'"'+(sel?" checked":"")+dis+'>'
          + '<span class="lk">'+L+')</span>'+esc(q.options[L])+'</label>';
@@ -187,10 +185,10 @@
     });
     var chosen = ans[q.id];
     var correct = chosen===q.answer;
-    var vtxt = !chosen ? "" : (correct ? "✓ Correta ("+q.answer+")"
-                : "✗ Você marcou "+chosen+" — correta é "+q.answer);
+    var vtxt = !chosen ? "" : (correct ? "✓ Correct ("+q.answer+")"
+                : "✗ You chose "+chosen+" — correct answer is "+q.answer);
     h += '<div class="verdict '+(correct?"ok":"bad")+'">'+vtxt+'</div>';
-    if(q.explanation) h += '<div class="expl"><b>Por quê:</b> '+esc(q.explanation)+'</div>';
+    if(q.explanation) h += '<div class="expl"><b>Why:</b> '+esc(q.explanation)+'</div>';
     card.innerHTML = h;
     wireRadios(card, q);
     return card;
@@ -200,7 +198,7 @@
     card.querySelectorAll('input[type=radio]').forEach(function(r){
       r.onchange = function(){
         var a = getAns(); a[q.id] = this.value; setAns(a);
-        var fresh = buildCard(q);           // rebuild p/ mostrar veredito/explicação na hora
+        var fresh = buildCard(q);
         card.replaceWith(fresh);
         updateProgress();
         if(isSubmitted()) renderResults(true);
@@ -215,7 +213,7 @@
     $("total").textContent = qs.length;
     var onlyWrong = $("onlyWrong").checked;
     qs.forEach(function(q){
-      if(onlyWrong && shouldReveal(q, ans) && ans[q.id]===q.answer) return;  // esconde acertadas
+      if(onlyWrong && shouldReveal(q, ans) && ans[q.id]===q.answer) return;
       main.appendChild(buildCard(q));
     });
     updateProgress();
@@ -228,7 +226,7 @@
     var n = qs.filter(function(q){ return ans[q.id]; }).length;
     $("answered").textContent = n;
     $("progbar").style.width = qs.length ? (100*n/qs.length)+"%" : "0%";
-    $("status").textContent = isSubmitted() ? "Finalizado — salvo" : (studyMode ? "Modo estudo — feedback na hora" : "Modo prova — salvo automaticamente");
+    $("status").textContent = isSubmitted() ? "Finished — saved" : (studyMode ? "Study mode — instant feedback" : "Exam mode — saved automatically");
   }
 
   function renderResults(submitted){
@@ -245,8 +243,8 @@
     }).join("");
     box.className="show";
     box.innerHTML = '<div class="score '+(pass?"pass":"fail")+'">'+Math.round(pct*100)+'% · '+correct+'/'+qs.length+'</div>'
-      + '<div class="hint">Corte de referência ~70%. '+(pass?"Acima do corte 🎯":"Abaixo do corte — revise as erradas.")+'</div>'
-      + '<table><thead><tr><th>Domínio</th><th class="n">Acertos</th><th class="n">%</th></tr></thead><tbody>'+rows+'</tbody></table>';
+      + '<div class="hint">Reference pass mark ~70%. '+(pass?"Above the pass mark 🎯":"Below the pass mark — review the incorrect ones.")+'</div>'
+      + '<table><thead><tr><th>Domain</th><th class="n">Correct</th><th class="n">%</th></tr></thead><tbody>'+rows+'</tbody></table>';
   }
 
   var timerInt=null;
@@ -267,13 +265,13 @@
   $("btnSubmit").onclick = function(){
     var qs = DATA[current].questions, ans = getAns();
     var missing = qs.filter(function(q){ return !ans[q.id]; }).length;
-    var msg = missing ? ("Faltam "+missing+" sem resposta. Finalizar mesmo assim?") : "Finalizar e ver resumo?";
+    var msg = missing ? (missing+" unanswered. Finish anyway?") : "Finish and see results?";
     if(!confirm(msg)) return;
     LS.set(keySub(current), true); render();
     $("results").scrollIntoView({behavior:"smooth", block:"start"});
   };
   $("btnReset").onclick = function(){
-    if(!confirm("Limpar respostas, correção e timer deste simulado?")) return;
+    if(!confirm("Reset answers, grading and timer for this exam?")) return;
     LS.del(keyAns(current)); LS.del(keySub(current)); LS.del(keyTimer(current));
     $("onlyWrong").checked=false; render();
   };
@@ -282,7 +280,7 @@
     var qs=DATA[current].questions, ans=getAns();
     var q = qs.find(function(x){ return !ans[x.id]; });
     if(q){ var el=$("q"+q.id); if(el) el.scrollIntoView({behavior:"smooth",block:"center"}); }
-    else alert("Todas respondidas ✓");
+    else alert("All questions answered ✓");
   };
 
   function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }

@@ -1,4 +1,4 @@
-"""Converte docs/SIMULADO_*.md + data/just_*.json em desktop/questions.js."""
+"""Convert docs/PRACTICE_EXAM_*.md + data/option_rationales_*.json into desktop/questions.js."""
 import re, json, sys, pathlib
 from collections import Counter
 
@@ -9,11 +9,12 @@ OUT = ROOT / "desktop" / "questions.js"
 
 Q_HEADER = re.compile(r'^(?:###\s+(\d+)\.\s+\[(.+?)\]|\*\*(\d+)\.\s+\[(.+?)\]\*\*)\s*$')
 OPT = re.compile(r'^([A-D])\)\s+(.*?)\s*$')
-ANS = re.compile(r'^\*\*(\d+)\.\s*Resposta:\s*\**([A-D])\**\.?\s*\**\s*$')
+ANS = re.compile(r'^\*\*(\d+)\.\s*Answer:\s*\**([A-D])\**\.?\s*\**\s*$')
 
-SIMS = {
-    "simulado1": ("Simulado 1", "SIMULADO_1.md", "just_1.json"),
-    "simulado2": ("Simulado 2", "SIMULADO_2.md", "just_2.json"),
+# Keys must stay stable: the app stores progress in localStorage under them.
+EXAMS = {
+    "simulado1": ("Practice Exam 1", "PRACTICE_EXAM_1.md", "option_rationales_1.json"),
+    "simulado2": ("Practice Exam 2", "PRACTICE_EXAM_2.md", "option_rationales_2.json"),
 }
 
 
@@ -31,8 +32,8 @@ def clean(s):
 
 def parse(path):
     lines = path.read_text(encoding='utf-8').splitlines()
-    gab_idx = next((i for i, l in enumerate(lines) if l.strip().startswith('## Gabarito')), len(lines))
-    body, gabar = lines[:gab_idx], lines[gab_idx:]
+    key_idx = next((i for i, l in enumerate(lines) if l.strip().startswith('## Answer Key')), len(lines))
+    body, key = lines[:key_idx], lines[key_idx:]
 
     questions = {}
     i = 0
@@ -63,16 +64,16 @@ def parse(path):
                           "options": opts, "answer": None, "explanation": ""}
 
     j = 0
-    while j < len(gabar):
-        m = ANS.match(gabar[j].strip())
+    while j < len(key):
+        m = ANS.match(key[j].strip())
         if not m:
             j += 1
             continue
         qid, letter = int(m.group(1)), m.group(2)
         j += 1
         expl = []
-        while j < len(gabar):
-            s = gabar[j].strip()
+        while j < len(key):
+            s = key[j].strip()
             if ANS.match(s) or s.startswith(('## ', '---', '> ')):
                 break
             if s:
@@ -88,43 +89,43 @@ def parse(path):
 
 
 def validate(qs):
-    probs = []
+    problems = []
     if len(qs) != 60:
-        probs.append(f"{len(qs)} questões (esperado 60)")
+        problems.append(f"{len(qs)} questions (expected 60)")
     if [q["id"] for q in qs] != list(range(1, len(qs) + 1)):
-        probs.append("IDs não sequenciais 1..N")
+        problems.append("question IDs are not sequential 1..N")
     for q in qs:
-        miss = [L for L in "ABCD" if L not in q["options"]]
-        if miss:
-            probs.append(f"Q{q['id']}: faltam alternativas {miss}")
+        missing = [L for L in "ABCD" if L not in q["options"]]
+        if missing:
+            problems.append(f"Q{q['id']}: missing options {missing}")
         if q["answer"] not in "ABCD" or q["answer"] not in q["options"]:
-            probs.append(f"Q{q['id']}: gabarito inválido")
+            problems.append(f"Q{q['id']}: invalid answer key")
         if not q["explanation"]:
-            probs.append(f"Q{q['id']}: sem explicação")
+            problems.append(f"Q{q['id']}: no explanation")
         if not q["text"]:
-            probs.append(f"Q{q['id']}: enunciado vazio")
-    return probs, Counter(q["domain"] for q in qs)
+            problems.append(f"Q{q['id']}: empty question text")
+    return problems, Counter(q["domain"] for q in qs)
 
 
 out, ok = {}, True
-for sid, (title, md, just) in SIMS.items():
+for key, (title, md, rationales) in EXAMS.items():
     qs = parse(DOCS / md)
-    probs, dist = validate(qs)
-    jp = DATA / just
-    if jp.exists():
-        j = json.loads(jp.read_text(encoding="utf-8"))
+    problems, dist = validate(qs)
+    rp = DATA / rationales
+    if rp.exists():
+        r = json.loads(rp.read_text(encoding="utf-8"))
         for q in qs:
-            oe = j.get(str(q["id"]))
+            oe = r.get(str(q["id"]))
             if oe:
                 q["optExpl"] = {k: oe[k] for k in "ABCD" if k in oe}
         missing = [q["id"] for q in qs if "optExpl" not in q]
         if missing:
-            probs.append(f"sem justificativa por alternativa: {missing}")
-    out[sid] = {"title": title, "questions": qs}
-    print(f"== {title}: {len(qs)} questões | {dict(sorted(dist.items(), key=lambda x: -x[1]))}")
-    for p in probs:
+            problems.append(f"no per-option rationale: {missing}")
+    out[key] = {"title": title, "questions": qs}
+    print(f"== {title}: {len(qs)} questions | {dict(sorted(dist.items(), key=lambda x: -x[1]))}")
+    for p in problems:
         ok = False
-        print("   PROBLEMA:", p)
+        print("   PROBLEM:", p)
 
 OUT.write_text("window.SIMULADOS = " + json.dumps(out, ensure_ascii=False, indent=1) + ";\n", encoding="utf-8")
 print("questions.js:", OUT.stat().st_size, "bytes")

@@ -1,0 +1,203 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//cert-de-pro//study plan 14 days//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Cert DE Professional - 14-day study plan
+X-WR-TIMEZONE:America/Sao_Paulo
+BEGIN:VEVENT
+UID:cert-de-pro-dia01@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20260925T220000Z
+DTEND:20260926T003000Z
+SUMMARY:DE Pro D1 - Diagnostic + schedule exam
+DESCRIPTION:Read Oct/2026 guide (New Exam column) + take 10 official sample questions. Practice exam #1 cold (measure baseline). Build glossary of renames + English terms. SCHEDULE exam on Webassessor for date >= Oct 9.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D1
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia02@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20260926T220000Z
+DTEND:20260927T003000Z
+SUMMARY:DE Pro D2 - S1 Code part 1 (23%)
+DESCRIPTION:Python project for Declarative Automation Bundles; deps (PyPI/wheels/source) on serverless/pipeline/bundle; UDFs Pandas/Python/SQL + UC functions; Lakeflow Declarative Pipelines + Auto Loader; streaming table vs materialized view. Drill 15-20 q.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D2
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia03@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20260927T120000Z
+DTEND:20260927T150000Z
+SUMMARY:DE Pro D3 - S1 Code part 2 (net-new)
+DESCRIPTION:Structured Streaming stateful (watermarks/output modes/foreachBatch/checkpoints exactly-once); AUTO CDC + SCD Type 1/2 via stored_as_scd_type; SS vs LDP; control flow If-Else/For Each; serverless compute (performance mode); testing assertDataFrameEqual/assertSchemaEqual. Drill 15-20 q.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D3
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia04@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20260928T120000Z
+DTEND:20260928T150000Z
+SUMMARY:DE Pro D4 - S5 Cost & Performance (15%)
+DESCRIPTION:Managed tables + Predictive Optimization + Liquid Clustering; choose deletion vectors vs LC vs CLUSTER BY AUTO; Delta cache; CDF row-level; query profile (data skipping/join/shuffle); LC vs partitioning/ZORDER. Drill 15-20 q + Query Profiler on Free Edition.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D4
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia05@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20260929T220000Z
+DTEND:20260930T003000Z
+SUMMARY:DE Pro D5 - S2 Ingestion (12%) (net-new)
+DESCRIPTION:Formats incl. Iceberg; message buses (Kafka/Kinesis/Pub-Sub) + cloud storage; incremental CDC with Delta OR Iceberg; Lakeflow Connect (CDC from SQL Server/MySQL/Postgres); OpenSharing D2D/D2O + Clean Rooms; Lakehouse Federation with governance. Drill 15-20 q.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D5
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia06@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20260930T220000Z
+DTEND:20261001T003000Z
+SUMMARY:DE Pro D6 - S3 Data Manipulation (12%) (net-new)
+DESCRIPTION:Window functions/joins/aggregations (Spark SQL + PySpark); VARIANT (parse_json, variant_get, colon-path); AI functions (ai_query) for inference in pipeline; data quality expectations in LDP (quarantine/drop/fail). Drill 15-20 q.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D6
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia07@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261001T220000Z
+DTEND:20261002T010000Z
+SUMMARY:DE Pro D7 - S4 Monitor + S8 Debug/Deploy + Practice Exam #2
+DESCRIPTION:S4: system tables (billing/compute/access/lakeflow); REST/CLI/SDK; event logs; Lakehouse alerts; Jobs UI/API. S8: Spark UI/logs/query profiles; job repairs + parameter overrides; Declarative Automation Bundles; Git folders CI/CD. COMPLETE PRACTICE EXAM #2 timed - update tracker.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D7 - Practice Exam #2
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia08@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261002T220000Z
+DTEND:20261003T003000Z
+SUMMARY:DE Pro D8 - S6 Security + S7 Governance + S9 Modeling
+DESCRIPTION:S6: least-privilege ACLs; ABAC with governed tags (row filters/column masks at scale); anonymization; PII masking batch+streaming; data purging (GDPR). S7: UC tags/comments; UC permission inheritance. S9: Delta/Iceberg layout; dimensional + Materialized Views + UC Metric Views. Drill 20 q.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D8
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia09@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261003T220000Z
+DTEND:20261004T010000Z
+SUMMARY:DE Pro D9 - Practice Exam #3 + deep review
+DESCRIPTION:60 timed questions. For each error: reread objective in guide + official doc. Record error pattern in tracker.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D9 - Practice Exam #3
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia10@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261004T120000Z
+DTEND:20261004T150000Z
+SUMMARY:DE Pro D10 - Gap day
+DESCRIPTION:Attack ONLY the 2-3 sections with worst % in tracker. Focused drills + docs. Prioritize net-new if weak.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D10
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia11@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261005T120000Z
+DTEND:20261005T150000Z
+SUMMARY:DE Pro D11 - Practice Exam #4 + review
+DESCRIPTION:60 timed questions. Target >= 80% consistent. Review all errors; refine personal cheat sheet.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D11 - Practice Exam #4
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia12@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261006T220000Z
+DTEND:20261007T003000Z
+SUMMARY:DE Pro D12 - Traps day
+DESCRIPTION:Review cheat sheet (10 sample questions) + recurring error log. Re-drill only what you missed in >= 2 practice exams.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D12
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia13@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261007T220000Z
+DTEND:20261008T003000Z
+SUMMARY:DE Pro D13 - Practice Exam #5 (exam conditions)
+DESCRIPTION:120 min no breaks/reference. Target >= 85%. Reconfirm official guide. Confirm Webassessor logistics (exam in English) + test online proctoring.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D13 - Practice Exam #5
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-dia14@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART:20261008T220000Z
+DTEND:20261008T233000Z
+SUMMARY:DE Pro D14 - Light eve
+DESCRIPTION:Cheat sheet + glossaries reread only. No new practice exam. Sleep.
+BEGIN:VALARM
+TRIGGER:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:DE Pro D14 - eve
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cert-de-pro-prova@rodsant
+DTSTAMP:20260925T120000Z
+DTSTART;VALUE=DATE:20261009
+DTEND;VALUE=DATE:20261010
+SUMMARY:EXAM - Databricks Data Engineer Professional (NEW EXAM)
+DESCRIPTION:Exam in English, 60 questions, 120 min. ADJUST this event to actual time once scheduled on Webassessor. Bring ID; test proctoring in advance.
+BEGIN:VALARM
+TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:Exam tomorrow - DE Professional
+END:VALARM
+END:VEVENT
+END:VCALENDAR

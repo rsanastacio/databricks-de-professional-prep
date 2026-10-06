@@ -1,22 +1,22 @@
-"""Gera index.html (app mobile, dados embutidos) + sw.js + manifest + ícones a partir de desktop/questions.js."""
+"""Build index.html (mobile app, embedded data) + sw.js + manifest + icons from desktop/questions.js."""
 import hashlib, pathlib, struct, zlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 data = (ROOT / "desktop" / "questions.js").read_text(encoding="utf-8")
 
 TEMPLATE = r"""<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Simulados DE">
+<meta name="apple-mobile-web-app-title" content="DE Practice">
 <meta name="theme-color" content="#FF3621">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Simulados DE Pro</title>
+<title>DE Professional Practice Exams</title>
 <style>
   :root{
     --bg:#f5f6f8;--card:#fff;--ink:#1a1a1a;--muted:#6b7280;--line:#e2e4e8;
@@ -94,32 +94,32 @@ TEMPLATE = r"""<!DOCTYPE html>
   <div class="top">
     <div class="seg" id="seg"></div>
     <div class="counter" id="counter">—</div>
-    <button class="iconbtn" id="menu" aria-label="Ajustes">⚙</button>
+    <button class="iconbtn" id="menu" aria-label="Settings">⚙</button>
   </div>
   <div class="bar"><i id="prog"></i></div>
   <div id="panel">
-    <div class="row"><label><input type="checkbox" id="study"> <b>Feedback na hora</b></label></div>
-    <div class="row">Tema:
-      <select id="theme"><option value="auto">Auto</option><option value="light">Claro</option><option value="dark">Escuro</option></select>
+    <div class="row"><label><input type="checkbox" id="study"> <b>Instant feedback</b></label></div>
+    <div class="row">Theme:
+      <select id="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select>
       <span id="timer" style="margin-left:auto;color:var(--muted)">120:00</span>
     </div>
     <div class="row">
-      <button id="jump">Ir p/ não respondida</button>
-      <button id="finish" class="primary">Finalizar</button>
-      <button id="reset" class="danger">Limpar</button>
+      <button id="jump">Next unanswered</button>
+      <button id="finish" class="primary">Finish</button>
+      <button id="reset" class="danger">Reset</button>
     </div>
   </div>
 </header>
 
 <main id="main">
-  <noscript><div class="empty">Este app precisa de JavaScript. No iPhone, abra pelo Safari (URL), não pela pré-visualização do app Arquivos.</div></noscript>
+  <noscript><div class="empty">This app needs JavaScript. On iPhone, open it in Safari via its URL, not from the Files app preview.</div></noscript>
   <div id="q"></div>
   <div id="results"></div>
 </main>
 
 <nav>
-  <button id="prev">◀ Anterior</button>
-  <button id="next" class="primary">Próxima ▶</button>
+  <button id="prev">◀ Previous</button>
+  <button id="next" class="primary">Next ▶</button>
 </nav>
 
 <script>__DATA__</script>
@@ -132,7 +132,7 @@ var LS={g:function(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){r
         d:function(k){try{localStorage.removeItem(k);}catch(e){}}};
 var $=function(id){return document.getElementById(id);};
 var PASS=0.70;
-if(!DATA){$("q").innerHTML='<div class="empty">Dados não encontrados.</div>';return;}
+if(!DATA){$("q").innerHTML='<div class="empty">Data not found.</div>';return;}
 
 var sid=LS.g("depro_current"); if(!DATA[sid]) sid=Object.keys(DATA)[0];
 var study=LS.g("depro_study"); if(study===null) study=true;
@@ -158,7 +158,7 @@ function buildSeg(){
   var s=$("seg");s.innerHTML="";
   Object.keys(DATA).forEach(function(k,i){
     var b=document.createElement("button");
-    b.textContent="S"+(i+1);
+    b.textContent="Exam "+(i+1);
     b.className=k===sid?"on":"";
     b.onclick=function(){sid=k;LS.s("depro_current",sid);idx=LS.g(kI())||0;wrongOnly=false;render();};
     s.appendChild(b);
@@ -179,7 +179,7 @@ function renderQ(){
   var q=list[idx], a=ans(), rev=reveal(q,a);
   var box=$("q"); box.className=rev?"rev":"";
   var dom=(q.domain||"")+(q.topic?" — "+q.topic:"");
-  var h='<span class="badge">'+esc(dom)+'</span><div class="qnum">Questão '+q.id+'</div>';
+  var h='<span class="badge">'+esc(dom)+'</span><div class="qnum">Question '+q.id+'</div>';
   h+='<div class="qtext">'+esc(q.text)+'</div>';
   ["A","B","C","D"].forEach(function(L){
     if(q.options[L]==null)return;
@@ -189,8 +189,8 @@ function renderQ(){
     if(rev && q.optExpl && q.optExpl[L]) h+='<div class="optnote '+(L===q.answer?"ok":"bad")+'">'+esc(q.optExpl[L])+'</div>';
   });
   var chosen=a[q.id], correct=chosen===q.answer;
-  h+='<div class="verdict '+(correct?"ok":"bad")+'">'+(!chosen?"":(correct?"✓ Correta ("+q.answer+")":"✗ Você marcou "+chosen+" — correta é "+q.answer))+'</div>';
-  if(q.explanation)h+='<div class="expl"><b>Por quê:</b> '+esc(q.explanation)+'</div>';
+  h+='<div class="verdict '+(correct?"ok":"bad")+'">'+(!chosen?"":(correct?"✓ Correct ("+q.answer+")":"✗ You chose "+chosen+" — correct answer is "+q.answer))+'</div>';
+  if(q.explanation)h+='<div class="expl"><b>Why:</b> '+esc(q.explanation)+'</div>';
   box.innerHTML=h;
   box.querySelectorAll(".opt").forEach(function(o){
     o.onclick=function(){
@@ -204,7 +204,7 @@ function renderQ(){
 
 function updateNav(list){
   $("prev").disabled=idx<=0;
-  $("next").textContent=idx>=list.length-1?"Finalizar ✓":"Próxima ▶";
+  $("next").textContent=idx>=list.length-1?"Finish ✓":"Next ▶";
 }
 
 function updateBars(){
@@ -222,17 +222,17 @@ $("next").onclick=function(){
 $("jump").onclick=function(){
   var a=ans(),list=qs();
   for(var i=0;i<list.length;i++){if(!a[list[i].id]){idx=i;LS.s(kI(),idx);wrongOnly=false;$("panel").classList.remove("show");renderQ();window.scrollTo(0,0);return;}}
-  alert("Todas respondidas ✓");
+  alert("All questions answered ✓");
 };
 $("finish").onclick=doFinish;
 $("reset").onclick=function(){
-  if(!confirm("Limpar respostas, correção e timer deste simulado?"))return;
+  if(!confirm("Reset answers, grading and timer for this exam?"))return;
   LS.d(kA());LS.d(kS());LS.d(kT());LS.d(kI());idx=0;wrongOnly=false;$("panel").classList.remove("show");render();
 };
 
 function doFinish(){
   var a=ans(),miss=qs().filter(function(q){return !a[q.id];}).length;
-  if(!confirm(miss?("Faltam "+miss+" sem resposta. Finalizar mesmo assim?"):"Finalizar e ver resumo?"))return;
+  if(!confirm(miss?(miss+" unanswered. Finish anyway?"):"Finish and see results?"))return;
   LS.s(kS(),true);$("panel").classList.remove("show");showResults();
 }
 
@@ -245,14 +245,14 @@ function showResults(){
   var dom={};list.forEach(function(q){var d=q.domain||"?";dom[d]=dom[d]||{t:0,c:0};dom[d].t++;if(a[q.id]===q.answer)dom[d].c++;});
   var rows=Object.keys(dom).sort().map(function(d){var o=dom[d];return '<tr><td>'+esc(d)+'</td><td class="n">'+o.c+'/'+o.t+'</td><td class="n">'+Math.round(100*o.c/o.t)+'%</td></tr>';}).join("");
   r.innerHTML='<div class="score '+(pass?"pass":"fail")+'">'+Math.round(pct*100)+'%</div>'
-    +'<div class="subs">'+correct+'/'+list.length+' · corte ~70% · '+(pass?"acima do corte 🎯":"abaixo — revise as erradas")+'</div>'
-    +'<table><thead><tr><th>Domínio</th><th class="n">Acertos</th><th class="n">%</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="subs">'+correct+'/'+list.length+' · pass mark ~70% · '+(pass?"above the pass mark 🎯":"below — review the incorrect ones")+'</div>'
+    +'<table><thead><tr><th>Domain</th><th class="n">Correct</th><th class="n">%</th></tr></thead><tbody>'+rows+'</tbody></table>'
     +'<div style="display:flex;gap:10px;margin-top:16px">'
-    +'<button id="revWrong" class="rbtn">Revisar erradas</button>'
-    +'<button id="allQ" class="rbtn">Ver todas</button></div>';
-  $("counter").textContent="Resumo";
+    +'<button id="revWrong" class="rbtn">Review incorrect</button>'
+    +'<button id="allQ" class="rbtn">Show all</button></div>';
+  $("counter").textContent="Results";
   $("revWrong").onclick=function(){
-    if(!list.some(function(q){return a[q.id]!==q.answer;})){alert("Nenhuma errada 🎯");return;}
+    if(!list.some(function(q){return a[q.id]!==q.answer;})){alert("No incorrect answers 🎯");return;}
     wrongOnly=true;idx=0;renderQ();window.scrollTo(0,0);
   };
   $("allQ").onclick=function(){wrongOnly=false;idx=0;renderQ();window.scrollTo(0,0);};
@@ -282,8 +282,8 @@ if("serviceWorker" in navigator && location.protocol==="https:"){navigator.servi
 """
 
 MANIFEST = """{
-  "name": "Simulados DE Professional",
-  "short_name": "Simulados DE",
+  "name": "DE Professional Practice Exams",
+  "short_name": "DE Practice",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -296,8 +296,8 @@ MANIFEST = """{
 }
 """
 
-# Cache-first p/ funcionar offline; versão muda a cada build e força atualização.
-SW = """const CACHE = "simulados-__VER__";
+# Cache-first so it works offline; the version changes on every build and forces an update.
+SW = """const CACHE = "practice-exams-__VER__";
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -315,7 +315,7 @@ self.addEventListener("fetch", e => {
 
 
 def png(size, path):
-    """Ícone sólido lava (#FF3621) com círculo branco central; PNG puro, sem PIL."""
+    """Solid lava (#FF3621) icon with a white centre circle; pure PNG, no PIL."""
     r0, g0, b0 = 0xFF, 0x36, 0x21
     c, rad = size / 2, size * 0.28
     rows = []
@@ -341,4 +341,4 @@ ver = hashlib.sha1(html.encode("utf-8")).hexdigest()[:10]
 (ROOT / "manifest.webmanifest").write_text(MANIFEST, encoding="utf-8")
 png(180, ROOT / "icon-180.png")
 png(512, ROOT / "icon-512.png")
-print(f"index.html {len(html.encode('utf-8'))} bytes | sw cache v{ver} | manifest + ícones")
+print(f"index.html {len(html.encode('utf-8'))} bytes | sw cache v{ver} | manifest + icons")
