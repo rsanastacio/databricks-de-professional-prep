@@ -1,0 +1,406 @@
+{
+ "questions": [
+  {
+   "id": 1,
+   "domain": "Developing Code",
+   "topic": "Python wheel task entry point and dependency conflicts",
+   "stem": "Your team is packaging a PySpark ETL job as a Python wheel with a custom entry point. The wheel depends on `pandas==2.0.0`, but your Databricks cluster has `pandas==1.5.3` pre-installed. The job needs to run on multiple clusters with different pre-installed versions. You want to avoid hard-coding versions and minimize deployment friction. What is the best approach?",
+   "code": {
+    "lang": "python",
+    "src": "# setup.py\nfrom setuptools import setup\n\nsetup(\n    name='etl-job',\n    version='1.0.0',\n    py_modules=['etl_main'],\n    install_requires=[\n        'pandas>=1.5,<3.0',  # Flexible version range\n        'pyspark>=3.5.0',\n    ],\n    entry_points={'console_scripts': ['etl-job=etl_main:main']},\n)"
+   },
+   "options": {
+    "A": "Pin the exact version in setup.py; use `pip install --force-reinstall` in the task's init script to override cluster defaults",
+    "B": "Hard-code the version check in the entry point; skip task if versions don't match",
+    "C": "Remove pandas from dependencies; add it as a cluster library via UI before each task run",
+    "D": "Use a flexible version range in setup.py (e.g., `pandas>=1.5,<3.0`); rely on the wheel's dependency resolution at install time"
+   },
+   "answer": "D",
+   "explanation": "Using flexible version ranges in setup.py allows pip to resolve compatible versions during wheel installation without forcing reinstalls or hardcoding logic. This balances dependency management with operational simplicity, letting the wheel work across clusters with different pre-installed versions.",
+   "optExpl": {
+    "A": "Incorrect: --force-reinstall can break other pinned dependencies and adds brittle init-script logic.",
+    "B": "Incorrect: Skipping on version mismatch fails to handle the root cause and leaves the job incomplete.",
+    "C": "Incorrect: Manual cluster library management breaks the wheel's portability and requires manual intervention before every run.",
+    "D": "Correct: Flexible version ranges in setup.py let pip resolve dependencies at install time, avoiding both conflicts and operational overhead."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/python-wheel"
+   ]
+  },
+  {
+   "id": 2,
+   "domain": "Developing Code",
+   "topic": "Streaming table vs materialized view for append-only near-real-time feed",
+   "stem": "Your data ingestion pipeline receives new events every 5 seconds into a staging Delta table. You need to join these events with a slowly changing dimension table (customer master, updated daily) and expose the result for real-time dashboards. The join must never drop events and should be maintainable without manual restarts. Which table type best meets these requirements?",
+   "code": null,
+   "options": {
+    "A": "Materialized View: runs on a schedule, re-computes the join daily, and preserves history",
+    "B": "Materialized View: processes events once per query execution, scales linearly, and supports schema evolution",
+    "C": "Streaming Table with manual checkpoint management: offers fine-grained control over event ordering and replay",
+    "D": "Streaming Table: processes new events incrementally, maintains state for the join, and restarts automatically on failure"
+   },
+   "answer": "D",
+   "explanation": "Streaming Tables use streaming semantics and are purpose-built for append-only feeds with incremental state management and auto-restart on failure. Materialized Views recompute from scratch on schedule, which loses event ordering and causes duplicates or gaps in continuously-flowing streams.",
+   "optExpl": {
+    "A": "Incorrect: Materialized Views with daily schedule cannot capture events every 5 seconds and will miss or duplicate data.",
+    "B": "Incorrect: Materialized Views recompute from scratch on schedule, not on every event, missing the real-time requirement.",
+    "C": "Incorrect: Manual checkpoint management adds operational overhead and is not needed for append-only scenarios with auto-healing.",
+    "D": "Correct: Streaming Tables maintain incremental state, process events in order, and auto-restart on failure—ideal for real-time append-only feeds."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-engineering/tables-views"
+   ]
+  },
+  {
+   "id": 3,
+   "domain": "Developing Code",
+   "topic": "AUTO CDC with apply_as_deletes and out-of-order events",
+   "stem": "You are capturing changes from a source system into a CDC feed that receives updates and deletes out of order (deletes may arrive before all updates). You use AUTO CDC with `apply_as_deletes` to handle logical deletes marked in the source. However, you notice that old updates are arriving 1–2 hours after deletes for the same record. Your team needs strong ordering guarantees. What should you do?",
+   "code": {
+    "lang": "sql",
+    "src": "CREATE OR REFRESH STREAMING TABLE target_table\nAS AUTO CDC INTO\nSELECT \n  id,\n  name,\n  status,\n  _change_type,\n  _commit_timestamp\nFROM STREAM(source_cdc_feed)\nSEQUENCE BY source_timestamp\nAPPLY AS DELETES(WHERE status = 'deleted')"
+   },
+   "options": {
+    "A": "Switch to a streaming table with manual `MERGE` logic and replay from an earlier checkpoint to recover missed updates",
+    "B": "Disable `apply_as_deletes`; manually filter deletes in post-processing before merge",
+    "C": "Use a watermark on the source timestamp to buffer out-of-order events; set a grace period longer than the expected delay",
+    "D": "Add a `sequence_by` column based on source timestamp and rely on AUTO CDC's ordering logic to reorder events"
+   },
+   "answer": "D",
+   "explanation": "AUTO CDC automatically handles out-of-order records when you specify SEQUENCE BY with the source timestamp. This tells the CDC engine how to order events, allowing it to reorder stale updates even if they arrive after deletes. This maintains consistency without manual complexity.",
+   "optExpl": {
+    "A": "Incorrect: Unnecessary complexity; AUTO CDC with proper SEQUENCE BY already handles out-of-order events correctly.",
+    "B": "Incorrect: Disabling CDC automation and manually handling deletes negates the benefit of AUTO CDC and increases maintenance.",
+    "C": "Incorrect: Watermarks are for stateful processing, not for ordering CDC events; AUTO CDC's SEQUENCE BY is the right tool.",
+    "D": "Correct: SEQUENCE BY with source timestamp lets AUTO CDC reorder out-of-order updates and deletes, maintaining consistency."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-streaming-table-auto-cdc"
+   ]
+  },
+  {
+   "id": 4,
+   "domain": "Developing Code",
+   "topic": "Iterator Pandas UDF for batch model scoring",
+   "stem": "You have a 10M-row batch of customer records to score with a pre-trained ML model. The model requires 500 MB of memory to load (one-time overhead per Python process). Scoring each record takes 1 ms. Your cluster has 8 executors with 4 cores each. You want to minimize total runtime without out-of-memory errors. Which approach is best?",
+   "code": {
+    "lang": "python",
+    "src": "from pyspark.sql.types import StructType, StructField, DoubleType\nfrom pyspark.sql.functions import pandas_udf\n\n# Iterator-based Pandas UDF: load model once per partition\n@pandas_udf(DoubleType())\ndef score_batch(iterator):\n    import ml_model  # Loads once per Python process\n    model = ml_model.load()  # 500 MB, once per partition\n    for df in iterator:\n        yield model.predict_batch(df['features'])  # Vectorized scoring\n\ndf = df.repartition(32)\nscored = df.withColumn('score', score_batch(col('features')))"
+   },
+   "options": {
+    "A": "Use a standard Python UDF with `model.load()` in the UDF function; let Spark handle partitioning and memory",
+    "B": "Use a SQL User-Defined Table Function (UDTF) with external model loading and return all scores in one batch",
+    "C": "Use `DataFrame.repartition(32)` then broadcast the model to all executors using `spark.broadcast()`",
+    "D": "Use an iterator-based Pandas UDF; load the model once per partition, score the entire batch in vectorized operations"
+   },
+   "answer": "D",
+   "explanation": "Iterator-based Pandas UDFs load the model once per Python process, then process multiple batches using vectorized Pandas operations. This minimizes model loading overhead while maximizing throughput through vectorization, unlike row-at-a-time Python UDFs.",
+   "optExpl": {
+    "A": "Incorrect: Standard Python UDFs reload the model for every row, causing 10M model loads and severe performance degradation.",
+    "B": "Incorrect: UDTFs are for returning multiple rows; this doesn't leverage Spark's partition-level model caching.",
+    "C": "Incorrect: Broadcasting the model helps, but doesn't address the UDF type; still requires a UDF that can use the broadcast efficiently.",
+    "D": "Correct: Iterator Pandas UDFs load the model once per Python process and score batches vectorized, minimizing overhead."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/pyspark/reference/functions/pandas_udf"
+   ]
+  },
+  {
+   "id": 5,
+   "domain": "Developing Code",
+   "topic": "Bundle with multiple targets, run_as permissions",
+   "stem": "Your team is deploying an ETL pipeline bundle to both a DEV environment (for testing) and a PROD environment (for production). The bundle defines a single job with SQL tasks that write to different catalogs. DEV uses a service account with catalog editor permissions; PROD requires running as a specific role with additional audit logging. You want to avoid duplicating the entire bundle configuration. What is the best practice?",
+   "code": {
+    "lang": "yaml",
+    "src": "targets:\n  dev:\n    variables:\n      run_as_role: \"service-account-dev\"\n      target_catalog: \"dev_catalog\"\n    \n  prod:\n    variables:\n      run_as_role: \"prod_audit_role\"\n      target_catalog: \"prod_catalog\"\n\njobs:\n  etl_job:\n    run_as:\n      service_principal_id: \"${var.run_as_role}\"\n    tasks:\n      - sql_task: \"SELECT * FROM ${var.target_catalog}.table\""
+   },
+   "options": {
+    "A": "Use environment variables in SQL tasks to select the catalog at runtime; manage permissions via Unity Catalog policies",
+    "B": "Create two separate bundles (dev/bundle.yml, prod/bundle.yml) with hardcoded run_as; deploy each independently",
+    "C": "Use bundle targets; define separate `run_as` clauses per target, each pointing to the correct role or service account",
+    "D": "Deploy once to DEV; manually edit the job in PROD UI to change permissions and target catalog before enabling"
+   },
+   "answer": "C",
+   "explanation": "Bundle targets allow you to define a single bundle with target-specific overrides for `run_as`, variables, and resource names. This eliminates duplication and drift while maintaining separate security boundaries for each environment.",
+   "optExpl": {
+    "A": "Incorrect: Runtime catalog selection is orthogonal to identity/permissions; SQL logic should not encode role selection.",
+    "B": "Incorrect: Duplicating bundles increases maintenance burden and risk of configuration drift between DEV and PROD.",
+    "C": "Correct: Bundle targets support per-environment `run_as` overrides, eliminating duplication while maintaining security boundaries.",
+    "D": "Incorrect: Manual UI edits bypass CI/CD and create untrackable configuration drift."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/run-as"
+   ]
+  },
+  {
+   "id": 6,
+   "domain": "Developing Code",
+   "topic": "Which query changes are allowed when restarting from checkpoint",
+   "stem": "Your streaming query is reading from a Kafka stream and maintaining a stateful aggregation (count by key). You have a checkpoint saved. Your team wants to add a new column to the schema and rename an aggregation output column. What is the safest change that allows you to restart from the existing checkpoint without data loss?",
+   "code": {
+    "lang": "python",
+    "src": "# Original query\ndf = spark.readStream.format(\"kafka\") \\\n  .option(\"kafka.bootstrap.servers\", \"...\") \\\n  .load()\n\n# Safe change: add column with default\nresult = df.groupBy(\"key\") \\\n  .agg(count(\"*\").alias(\"event_count\")) \\\n  .withColumn(\"event_type\", lit(\"streaming\"))  # New column\n\n# Unsafe: rename aggregation column\n# result = result.withColumnRenamed(\"event_count\", \"total_events\")  # Breaks checkpoint"
+   },
+   "options": {
+    "A": "Rename the aggregation output column; restart with the same checkpoint—Spark will map the old name to the new name automatically",
+    "B": "Drop an unused column from the schema; rename the output; restart from a new checkpoint location",
+    "C": "Modify the aggregation key from `(key1, key2)` to `(key1)` to reduce cardinality; adjust the checkpoint path accordingly",
+    "D": "Add a new column with a default value; keep all existing columns unchanged; restart from the existing checkpoint"
+   },
+   "answer": "D",
+   "explanation": "Adding columns with defaults preserves checkpoint state while extending the schema. Renaming stateful operation columns breaks schema mapping, as checkpoint state is matched by column name. Schema evolution requires that you keep existing columns unchanged.",
+   "optExpl": {
+    "A": "Incorrect: Renaming output columns breaks the schema mapping of checkpoint state; fields are matched by name.",
+    "B": "Incorrect: Dropping columns and starting a new checkpoint forfeits the benefit of restarting from existing state.",
+    "C": "Incorrect: Changing aggregation keys alters state semantics and invalidates prior checkpoint state.",
+    "D": "Correct: Adding columns with defaults preserves state schema compatibility and allows safe restart from existing checkpoint."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/stateful-applications/schema-evolution"
+   ]
+  },
+  {
+   "id": 7,
+   "domain": "Developing Code",
+   "topic": "dropDuplicatesWithinWatermark for stateful dedup",
+   "stem": "Your streaming pipeline ingests user events with a timestamp field. Events may arrive out of order within a 1-hour window, and you must deduplicate based on a unique event ID within that window. Older events (outside the window) can be duplicated without harm. You want a stateless, cost-effective deduplication strategy. What should you use?",
+   "code": {
+    "lang": "python",
+    "src": "df = spark.readStream.format(\"kafka\").load()\n\n# Add watermark and deduplicate within window\ndeduped = (df\n    .withWatermark(\"event_timestamp\", \"1 hour\")\n    .dropDuplicatesWithinWatermark(\"event_id\")  # Only keeps state for 1 hour\n)\n\n# Events older than 1 hour are dropped from state\n# Duplicates outside window are allowed (no memory growth)"
+   },
+   "options": {
+    "A": "`dropDuplicates(\"event_id\")` without watermark—Spark will deduplicate all events globally in memory",
+    "B": "Manual state store with TTL—write event_id to a shared state table, check on arrival, age out after 1 hour",
+    "C": "`dropDuplicatesWithinWatermark(\"event_id\")` with `withWatermark()` on the timestamp; only store state for 1-hour window",
+    "D": "`window()` aggregation with `first(event_id)` to select the first occurrence per window, then dedup"
+   },
+   "answer": "C",
+   "explanation": "Using dropDuplicatesWithinWatermark() combined with withWatermark() deduplicates only within the watermark window (1 hour), then automatically discards old state—cost-effective and optimal for stateful deduplication. Data older than the watermark window is dropped from state automatically.",
+   "optExpl": {
+    "A": "Incorrect: dropDuplicates() without watermark stores all events in state, causing unbounded memory growth.",
+    "B": "Incorrect: Manual state management adds operational overhead; the built-in operator is simpler and better optimized.",
+    "C": "Correct: dropDuplicatesWithinWatermark() deduplicates within the watermark window and automatically ages out old state.",
+    "D": "Incorrect: window().first() is a workaround; dropDuplicatesWithinWatermark() is the native dedup operator."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/dropDuplicates"
+   ]
+  },
+  {
+   "id": 8,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Auto Loader file notification mode vs directory listing at scale",
+   "stem": "Your company ingests 100,000 new CSV files daily from an S3 bucket into a Bronze table. Files arrive throughout the day with a 2–5 minute latency requirement. You have two options: file notifications (SNS/SQS) or directory listing. Your infra team wants to minimize polling overhead. Which approach scales better and why?",
+   "code": {
+    "lang": "python",
+    "src": "# File notification mode (recommended for scale)\ndf = spark.readStream \\\n  .format(\"cloudFiles\") \\\n  .option(\"cloudFiles.format\", \"csv\") \\\n  .option(\"cloudFiles.sourceNotificationMode\", \"SNS_SQS\") \\\n  .option(\"cloudFiles.connectionString\", \"<sqs-url>\") \\\n  .option(\"cloudFiles.resourceGroup\", \"<resource-group>\") \\\n  .load(\"s3://bucket/csv/\")\n\n# Scales O(1) per file, not O(n) per poll interval"
+   },
+   "options": {
+    "A": "Directory listing: Databricks polls S3 every minute, scans all 100k+ files, and processes new ones; cheaper than SNS setup",
+    "B": "Directory listing with aggressive caching: list S3 once per hour, cache results locally, and poll the cache every minute",
+    "C": "Hybrid: use file notifications for the first 50k files, then switch to directory listing to avoid SNS cost",
+    "D": "File notification mode: each file triggers an SNS message, which queues the file path for Auto Loader; scales independently of bucket size"
+   },
+   "answer": "D",
+   "explanation": "File notification mode scales O(1) per new file, decoupling ingestion latency from bucket size. Directory listing scans the entire bucket every interval, scaling O(n) which becomes prohibitively slow and expensive with 100k+ files. File notifications include built-in retry semantics.",
+   "optExpl": {
+    "A": "Incorrect: Directory listing scans all 100k+ files per poll, causing O(n) latency and cost that worsens as files accumulate.",
+    "B": "Incorrect: Local caching doesn't reduce S3 scan cost; still O(n) per hour, and cache invalidation complicates logic.",
+    "C": "Incorrect: Hybrid approach is operationally complex and doesn't address the O(n) scaling problem of directory listing.",
+    "D": "Correct: File notifications decouple ingestion from bucket size; each file triggers one SNS message, scaling O(1) per file."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-notification-mode"
+   ]
+  },
+  {
+   "id": 9,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Reading Kinesis into streaming table with at-least-once semantics",
+   "stem": "Your team needs to ingest real-time events from AWS Kinesis (1000 events/sec) into Databricks for a real-time analytics dashboard. The integration must provide sub-5-second end-to-end latency and handle at-least-once semantics (duplicates possible but acceptable for analytics aggregations). Your team is inexperienced with Kinesis and prefers to minimize operational overhead. Which integration best meets these requirements?",
+   "code": {
+    "lang": "python",
+    "src": "from pyspark.sql import SparkSession\n\nspark = SparkSession.builder.appName(\"KinesisIngest\").getOrCreate()\n\n# Structured Streaming with Kinesis\ndf = spark.readStream \\\n  .format(\"kinesis\") \\\n  .option(\"streamName\", \"events\") \\\n  .option(\"region\", \"us-west-2\") \\\n  .option(\"initialPosition\", \"TRIM_HORIZON\") \\\n  .load()\n\n# Cast binary data to string\ndf = df.select(\n    col(\"data\").cast(\"string\").alias(\"payload\"),\n    col(\"approximateArrivalTimestamp\").alias(\"event_time\")\n)\n\ndf.writeStream.format(\"delta\").mode(\"append\").option(\"checkpointLocation\", \"/tmp/ckpt\").start()"
+   },
+   "options": {
+    "A": "Use DataFrame API with `readStream().format(\"kinesis\")` and manage checkpoints manually to recover from shard changes",
+    "B": "Batch ingest via Kinesis GetRecords API every 1 second; write to a Delta table, then query as streaming source",
+    "C": "Use Structured Streaming with `readStream().format(\"kinesis\")`; Spark automatically manages checkpoints and handles shard rebalancing",
+    "D": "Use Kinesis Firehose to buffer events into S3, then use Auto Loader in directory-listing mode for ingestion"
+   },
+   "answer": "C",
+   "explanation": "Structured Streaming with Kinesis provides sub-5-second latency through automatic checkpoint management and shard rebalancing. Kinesis connectors handle at-least-once semantics, which is appropriate for analytics where duplicate counting is acceptable. Spark's built-in operators eliminate manual checkpoint tracking.",
+   "optExpl": {
+    "A": "Incorrect: Manual checkpoint management for Kinesis requires custom shard tracking logic and is error-prone on rebalancing.",
+    "B": "Incorrect: Batching every second adds artificial 1–2 sec latency and complicates checkpoint recovery.",
+    "C": "Correct: Structured Streaming handles Kinesis shard tracking and checkpoints automatically with at-least-once semantics.",
+    "D": "Incorrect: Kinesis Firehose buffers for 1–2 minutes, exceeding the <5 sec latency requirement."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/connect/streaming/kinesis/"
+   ]
+  },
+  {
+   "id": 10,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Delta Sharing between Databricks workspaces (D2D) and change data feed history",
+   "stem": "Your team has two Databricks workspaces: one for Data Lake (prod, 500M records) and one for Analytics (test). You want to share the latest prod data with the analytics team via Delta Sharing, but also replay historical changes for lineage audits. The analytics team queries the shared table hourly and cannot tolerate missing rows. What must you enable on the source table?",
+   "code": {
+    "lang": "sql",
+    "src": "-- On prod workspace source table\nALTER TABLE prod_catalog.prod_schema.events\nSET TBLPROPERTIES (\n  'delta.enableChangeDataFeed' = 'true',\n  'delta.changeDataFeedRetentionDays' = '30'\n);\n\n-- Share via D2D in Delta Sharing recipient config\n-- SELECT * FROM shared_table  -- Latest\n-- SELECT * FROM table_changes(...) --  Historical changes"
+   },
+   "options": {
+    "A": "Enable row-level security via ABAC; share the catalog with reader role; maintain a separate audit table for history",
+    "B": "Configure time-travel retention to 90 days; query the shared table with `SELECT * FROM table@timestamp` syntax",
+    "C": "Enable Predictive Optimization on the table; Delta Sharing will automatically sync deltas",
+    "D": "Enable Change Data Feed (CDF) on the source table; share via Delta Sharing in the Databricks-to-Databricks (D2D) endpoint"
+   },
+   "answer": "D",
+   "explanation": "Change Data Feed must be enabled to capture INSERT/UPDATE/DELETE history. CDF tracks row-level changes and works with Delta Sharing for replay, allowing audit recipients to access both current snapshots and historical change records within the retention window.",
+   "optExpl": {
+    "A": "Incorrect: ABAC controls access; a separate audit table adds complexity and doesn't leverage CDF.",
+    "B": "Incorrect: Time-travel snapshots provide point-in-time views but not structured change history needed for lineage audits.",
+    "C": "Incorrect: Predictive Optimization auto-tunes performance; it does not enable change tracking or Delta Sharing.",
+    "D": "Correct: Change Data Feed + Delta Sharing preserves full change history (INSERTs, UPDATEs, DELETEs) for audit and replay."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/tables/features/change-data-feed"
+   ]
+  },
+  {
+   "id": 11,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Clean Rooms for privacy-preserving collaboration",
+   "stem": "Two competing financial institutions want to identify overlapping customers for joint marketing, without either party revealing their complete customer lists (competitive risk and privacy concern). They evaluate Databricks Clean Rooms versus alternative secure data sharing approaches. What unique data governance guarantee does a Clean Room provide that direct raw data sharing methods do not?",
+   "code": {
+    "lang": "sql",
+    "src": "-- In clean room, collaborator queries data from both parties\n-- but never sees raw rows, only aggregated results\n\nSELECT \n  COUNT(DISTINCT shared_customer_id) AS overlap_count,\n  COUNT(DISTINCT bank_a_customer_id) AS bank_a_total,\n  COUNT(DISTINCT bank_b_customer_id) AS bank_b_total\nFROM clean_room_overlap_view\n-- Result shows counts but not customer identities"
+   },
+   "options": {
+    "A": "Clean Rooms encrypt data in transit; raw data sharing sends unencrypted files",
+    "B": "Clean Rooms execute queries in an isolated environment; results are aggregated and filtered to prevent row-level disclosure",
+    "C": "Clean Rooms require customers to approve all queries; raw sharing has no approval workflow",
+    "D": "Clean Rooms replicate data to a third-party provider for added security"
+   },
+   "answer": "B",
+   "explanation": "Clean Rooms execute queries in a sandboxed workspace where neither party sees raw rows—only aggregated or filtered results. This prevents row-level data exfiltration while allowing collaborative analysis. Encryption and approval workflows are administrative controls, not unique guarantees.",
+   "optExpl": {
+    "A": "Incorrect: Both Clean Rooms and raw sharing use encrypted transit; the key difference is query isolation, not encryption.",
+    "B": "Correct: Clean Rooms isolate query execution and aggregate results, preventing row-level data disclosure.",
+    "C": "Incorrect: Approval workflows are governance controls, not a unique Clean Room guarantee about data privacy.",
+    "D": "Incorrect: Clean Rooms do not replicate data to third parties; they execute queries in the workspace's isolated compute."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/clean-rooms/create-clean-room"
+   ]
+  },
+  {
+   "id": 12,
+   "domain": "Data Manipulation",
+   "topic": "Semi/anti joins for data-quality checks",
+   "stem": "You have a fact table (1B rows) of user events and a dimension table (100k rows) of valid customers. You need to flag events from invalid customers (those NOT in the dimension). You also need to find valid customers who have NO events. Which join types minimize computation and prevent row duplication?",
+   "code": {
+    "lang": "sql",
+    "src": "-- Find invalid events\nSELECT f.* FROM facts f\nLEFT ANTI JOIN dim_customers d ON f.customer_id = d.customer_id;\n\n-- Find customers with no events\nSELECT d.* FROM dim_customers d\nLEFT ANTI JOIN facts f ON d.customer_id = f.customer_id;"
+   },
+   "options": {
+    "A": "Use LEFT OUTER JOIN on facts to dimension (1B rows returned), then RIGHT OUTER JOIN to find customers with no events (duplicates expected)",
+    "B": "Use LEFT ANTI JOIN from facts to dimension; use LEFT ANTI JOIN from dimension to facts",
+    "C": "Use FULL OUTER JOIN with WHERE conditions to find null matches on both sides; this avoids scanning large tables",
+    "D": "Use INNER JOIN to find valid events; use NOT IN subquery to find customers with no events (nested query)"
+   },
+   "answer": "B",
+   "explanation": "LEFT ANTI JOIN returns unmatched rows from the left table. For invalid events, apply LEFT ANTI from facts to dimension. For customers with no events, apply LEFT ANTI from dimension to facts. This avoids duplicates and is highly efficient for both queries.",
+   "optExpl": {
+    "A": "Incorrect: FULL OUTER JOIN after LEFT OUTER produces row duplication and requires post-deduplication logic.",
+    "B": "Correct: LEFT ANTI from facts finds unmatched facts (invalid events); LEFT ANTI from dimension finds unmatched dimension rows.",
+    "C": "Incorrect: FULL OUTER JOIN still scans all rows from both tables; anti-joins are far more efficient for finding unmatched sets.",
+    "D": "Incorrect: NOT IN subquery is less efficient than anti-join and requires nested query evaluation."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-join"
+   ]
+  },
+  {
+   "id": 13,
+   "domain": "Data Manipulation",
+   "topic": "VARIANT schema discovery with schema_of_variant and exploding nested arrays",
+   "stem": "Your ingestion pipeline receives JSON records as VARIANT columns. Each record has a nested array of objects under `.items[]`, with varying schemas (some have field `x`, others have field `y`, some with both fields present). You need to flatten the array, discover all possible fields across all records, and create uniform output. What is the correct approach?",
+   "code": {
+    "lang": "sql",
+    "src": "-- Flatten and discover schemas\nWITH exploded AS (\n  SELECT \n    variant_explode(items) AS item\n  FROM bronze_table\n  WHERE items IS NOT NULL\n)\nSELECT \n  schema_of_variant(item) AS item_schema,\n  item\nFROM exploded"
+   },
+   "options": {
+    "A": "Use `schema_of_variant()` on the entire VARIANT column; Spark will infer a merged schema for all arrays",
+    "B": "Use `variant_explode()` to flatten the array, then `schema_of_variant()` on each element to discover field names",
+    "C": "Use `to_json()` to convert VARIANT to string, then `from_json()` with a pre-defined schema; requires manual schema curation",
+    "D": "Use `get_json_object()` with wildcards to extract all `.items[*]` fields; manually union results"
+   },
+   "answer": "B",
+   "explanation": "Use variant_explode() to flatten nested arrays into individual rows, then apply schema_of_variant() on each element to discover its schema. This approach discovers field schemas at the element level across all records and enables schema merging.",
+   "optExpl": {
+    "A": "Incorrect: schema_of_variant() on the array returns the array schema, not individual element schemas.",
+    "B": "Correct: variant_explode() flattens the array, then schema_of_variant() on each row discovers field schemas.",
+    "C": "Incorrect: to_json() with from_json() defeats the discovery goal and requires manual maintenance.",
+    "D": "Incorrect: String manipulation loses nested structure and type safety; VARIANT operators are safer and more efficient."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/pyspark/reference/functions/schema_of_variant"
+   ]
+  },
+  {
+   "id": 14,
+   "domain": "Data Manipulation",
+   "topic": "Error handling with ai_query in batch processing",
+   "stem": "You have a 50k-row batch of product descriptions (text column). You want to extract structured fields (category, subcategory, brand) using an LLM via `ai_query()`. The LLM may timeout or refuse certain inputs. You need deterministic, retryable batching with graceful degradation. What is the safest approach?",
+   "code": {
+    "lang": "python",
+    "src": "from pyspark.sql.functions import col, struct, lit, when\n\ndef extract_with_error_handling(description):\n    try:\n        result = ai_query(\n            f\"Extract category, subcategory, brand from: {description}\",\n            output_format={\"category\": \"string\", \"subcategory\": \"string\", \"brand\": \"string\"}\n        )\n        return result\n    except Exception as e:\n        log.warning(f\"LLM error: {e}\")\n        return {\"category\": None, \"subcategory\": None, \"brand\": None}\n\ndf_batched = df.repartition(50)  # Micro-batches\nresult = df_batched.withColumn(\"extraction\", \n    struct_from_json(extract_with_error_handling(col(\"description\"))))\n"
+   },
+   "options": {
+    "A": "Apply `ai_query()` to the entire DataFrame; Spark will parallelize across partitions; use `SCHEMA OF` to define output schema",
+    "B": "Use a TRY-CATCH block in a UDF wrapping `ai_query()`; batch into micro-batches; log errors and return NULL for failures",
+    "C": "Apply `ai_query()` with `max_tokens` limit; use Adaptive Query Execution (AQE) to retry on timeout; cache intermediate results",
+    "D": "Use `ai_query()` with a CASE statement for fallback logic; if LLM call fails, populate fields with defaults; no error logging"
+   },
+   "answer": "B",
+   "explanation": "Wrapping ai_query() in a UDF with TRY-CATCH allows graceful error handling—return NULL for failures and log for debugging. Micro-batching ensures faster retry cycles and resource sharing. This approach prevents cascading failures and provides visibility.",
+   "optExpl": {
+    "A": "Incorrect: No error handling; timeouts or LLM refusals will crash the entire DataFrame operation.",
+    "B": "Correct: TRY-CATCH in a UDF handles errors gracefully; micro-batches enable faster retries and resource sharing.",
+    "C": "Incorrect: AQE optimizes query plans, not LLM retry logic; mixing concerns complicates debugging.",
+    "D": "Incorrect: Silent fallback to defaults hides failures and prevents root-cause analysis."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/pyspark/reference/functions/ai_query"
+   ]
+  },
+  {
+   "id": 15,
+   "domain": "Monitoring and Alerting",
+   "topic": "Compute utilization from system tables (system.compute)",
+   "stem": "Your data team runs 100+ daily jobs on Databricks clusters. You want to identify underutilized clusters and spot anomalies (e.g., a job using 90% CPU for 2 hours). You decide to query system tables to build a monitoring dashboard. Which table should you query to get per-executor CPU and memory utilization?",
+   "code": {
+    "lang": "sql",
+    "src": "SELECT \n  cluster_id,\n  node_id,\n  start_time,\n  cpu_user_percent,\n  cpu_system_percent,\n  mem_used_percent\nFROM system.compute.node_timeline\nWHERE start_time > CURRENT_TIMESTAMP - INTERVAL 2 HOURS\n  AND (cpu_user_percent + cpu_system_percent) > 90\nORDER BY start_time DESC, cpu_user_percent DESC"
+   },
+   "options": {
+    "A": "`system.billing.account_usage_core`—shows credits consumed per cluster daily",
+    "B": "`system.compute.cluster_events`—logs cluster state changes (start, stop, terminate)",
+    "C": "`system.compute.node_timeline`—contains per-node CPU, memory, and disk I/O utilization at 1-minute granularity",
+    "D": "`system.access.query_history`—logs all SQL queries and their execution time"
+   },
+   "answer": "C",
+   "explanation": "system.compute.node_timeline provides per-node utilization metrics (CPU %, memory %, I/O) at 1-minute granularity, ideal for identifying anomalies like sustained high CPU. This table captures resource utilization data per instance over time.",
+   "optExpl": {
+    "A": "Incorrect: account_usage_core shows billing/credits, not per-node utilization metrics.",
+    "B": "Incorrect: cluster_events logs lifecycle changes, not ongoing CPU/memory metrics.",
+    "C": "Correct: node_timeline provides per-node CPU, memory, and I/O utilization for real-time anomaly detection.",
+    "D": "Incorrect: query_history logs SQL query execution, not cluster-level compute resource utilization."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/compute"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,109 @@
+{
+  "audit": [
+    {
+      "id": 1,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/artifact-private",
+      "evidence": "To include the artifact in your bundle, reference it in your configuration to include the wheel in deployment."
+    },
+    {
+      "id": 2,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/designer/tutorial-send-slack-message-sql-udf",
+      "evidence": "SQL UDFs have exclusive access to http_request functionality with UC connections for external APIs."
+    },
+    {
+      "id": 3,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/concepts/materialized-views",
+      "evidence": "Materialized views cache the results of a query and refresh them on a specified interval for latency/cost balance."
+    },
+    {
+      "id": 4,
+      "status": "fixed",
+      "change": "Fixed SQL syntax: changed 'AUTO CDC INTO' to 'FLOW AUTO CDC' and added 'STORED AS SCD TYPE 2' per documentation.",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-streaming-table-auto-cdc",
+      "evidence": "CREATE OR REFRESH STREAMING TABLE target FLOW AUTO CDC FROM stream(source) SEQUENCE BY order_column STORED AS SCD TYPE 2"
+    },
+    {
+      "id": 5,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/structured-streaming/output-mode",
+      "evidence": "Update mode: Operators emit all rows that changed during the trigger, ideal for late event updates."
+    },
+    {
+      "id": 6,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/jobs/how-to/foreach-sql-lookup-tutorial",
+      "evidence": "In Lakeflow Jobs for_each, the items SQL query auto-binds row columns to task context variables."
+    },
+    {
+      "id": 7,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/compute/serverless/dependencies",
+      "evidence": "Databricks caches notebook virtual environments so dependencies don't reinstall on every reopening."
+    },
+    {
+      "id": 8,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema",
+      "evidence": "Auto Loader rescues columns that don't match the schema into a JSON blob in the _rescued_data column."
+    },
+    {
+      "id": 9,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/connect/streaming/kafka/",
+      "evidence": "Kafka connector starts from latest offset by default; use from_json() to deserialize JSON payloads."
+    },
+    {
+      "id": 10,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/",
+      "evidence": "Deploy an ingestion gateway in on-premises network; enable database CDC; create ingestion pipeline."
+    },
+    {
+      "id": 11,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/opensharing",
+      "evidence": "OpenSharing enables non-Databricks recipients to access shared Delta tables through connector authentication."
+    },
+    {
+      "id": 12,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/functions/row_number",
+      "evidence": "ROW_NUMBER with ORDER BY sequence_id DESC assigns rank 1 to the highest value within each partition."
+    },
+    {
+      "id": 13,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/variant",
+      "evidence": "parse_json converts string to VARIANT; try_variant_get safely extracts fields and returns NULL on error."
+    },
+    {
+      "id": 14,
+      "status": "fixed",
+      "change": "Rewrote stem and options: plain EXPECT writes rows to target (not quarantine); changed to use @expect decorators with validation_status column for flagging records for manual review while maintaining audit trails.",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/developer/ldp-python-ref-expectations",
+      "evidence": "@expect decorators record metrics for audit; ON VIOLATION DROP ROW removes records; neither quarantines for manual review."
+    },
+    {
+      "id": 15,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/system-tables/billing",
+      "evidence": "system.billing.usage custom_tags column stores tags as map; join via job_id to attribute compute costs."
+    }
+  ]
+}

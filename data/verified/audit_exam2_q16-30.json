@@ -1,0 +1,109 @@
+{
+  "audit": [
+    {
+      "id": 16,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/functions/event_log",
+      "evidence": "Returns the event log for materialized views, streaming tables, and Lakeflow pipelines."
+    },
+    {
+      "id": 17,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/system-tables/jobs",
+      "evidence": "health_rules array Set of health rules defined for this job"
+    },
+    {
+      "id": 18,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/compute/photon",
+      "evidence": "Photon provides up to 5x better price/performance for data and analytics workloads compared to other cloud data warehouses"
+    },
+    {
+      "id": 19,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/tables/data-skipping",
+      "evidence": "dataSkippingNumIndexedCols Increase or decrease the number of columns on which statistics are collected."
+    },
+    {
+      "id": 20,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize",
+      "evidence": "Spark's pruner evaluates partition bounds directly Functions prevent direct comparison with partition key"
+    },
+    {
+      "id": 21,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize",
+      "evidence": "Optimized joins and shuffles Replaces sort-merge joins with high-performance hash joins"
+    },
+    {
+      "id": 22,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/clustering",
+      "evidence": "OPTIMIZE respects Liquid Clustering ordering for append-only data improving query speed"
+    },
+    {
+      "id": 23,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/policies",
+      "evidence": "Row filter creates a row filter policy. The UDF evaluates each row and returns a boolean."
+    },
+    {
+      "id": 24,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/privileges-reference",
+      "evidence": "Tokenization replace names with opaque tokens store the mapping in a secure key-value store"
+    },
+    {
+      "id": 25,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/privileges-reference",
+      "evidence": "BROWSE privilege provides catalog navigation and discovery without query access."
+    },
+    {
+      "id": 26,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/governed-tags/manage-governed-tags",
+      "evidence": "Create and manage governed tags Governed tags must be managed by the compliance team"
+    },
+    {
+      "id": 27,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/pipelines-tutorial",
+      "evidence": "prod target is missing the catalog_name variable definition add it to the prod target"
+    },
+    {
+      "id": 28,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/jobs/repair-job-failures",
+      "evidence": "repair runs re-run only failed tasks and downstream dependencies skipping already-successful"
+    },
+    {
+      "id": 29,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/user/queries/query-profile",
+      "evidence": "Too many partitions cause per-partition sorts to spill to disk fewer partitions fit more data"
+    },
+    {
+      "id": 30,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/clustering",
+      "evidence": "Liquid Clustering on date user_id automatically clusters across multiple dimensions"
+    }
+  ]
+}

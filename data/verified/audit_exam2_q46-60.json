@@ -1,0 +1,109 @@
+{
+  "audit": [
+    {
+      "id": 46,
+      "status": "fixed",
+      "change": "Fixed table name from system.jobs.run_history to system.lakeflow.job_run_timeline",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/system-tables/jobs",
+      "evidence": "Verified against Monitoring and Alerting documentation"
+    },
+    {
+      "id": 47,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-quality-monitoring/anomaly-detection/",
+      "evidence": "Verified against Monitoring and Alerting documentation"
+    },
+    {
+      "id": 48,
+      "status": "fixed",
+      "change": "Removed letter references from explanation",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/system-tables/materialization",
+      "evidence": "Verified against Cost & Performance Optimization documentation"
+    },
+    {
+      "id": 49,
+      "status": "fixed",
+      "change": "Fixed SQL syntax from SET TBLPROPERTIES to CLUSTER BY for Liquid Clustering",
+      "evidence_url": "https://docs.databricks.com/aws/en/tables/clustering",
+      "evidence": "Verified against Cost & Performance Optimization documentation"
+    },
+    {
+      "id": 50,
+      "status": "fixed",
+      "change": "Removed letter references from explanation",
+      "evidence_url": "https://docs.databricks.com/aws/en/compute/serverless/",
+      "evidence": "Verified against Cost & Performance Optimization documentation"
+    },
+    {
+      "id": 51,
+      "status": "fixed",
+      "change": "Removed letter references from explanation",
+      "evidence_url": "https://docs.databricks.com/aws/en/dashboards/caching",
+      "evidence": "Verified against Cost & Performance Optimization documentation"
+    },
+    {
+      "id": 52,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-column-mask",
+      "evidence": "Verified against Data Security and Compliance documentation"
+    },
+    {
+      "id": 53,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/delta-vacuum",
+      "evidence": "Verified against Data Security and Compliance documentation"
+    },
+    {
+      "id": 54,
+      "status": "fixed",
+      "change": "Fixed answer from D to A: secrets ARE redacted in notebook output",
+      "evidence_url": "https://docs.databricks.com/aws/en/archive/dev-tools/dbutils-library",
+      "evidence": "Verified against Data Security and Compliance documentation"
+    },
+    {
+      "id": 55,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/admin-privileges",
+      "evidence": "Verified against Data Governance documentation"
+    },
+    {
+      "id": 56,
+      "status": "fixed",
+      "change": "Removed letter references from explanation",
+      "evidence_url": "https://docs.databricks.com/aws/en/compute/troubleshooting/debugging-spark-ui",
+      "evidence": "Verified against Debugging and Deploying documentation"
+    },
+    {
+      "id": 57,
+      "status": "fixed",
+      "change": "Removed letter references from explanation",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/databricks-apps/lakeflow",
+      "evidence": "Verified against Debugging and Deploying documentation"
+    },
+    {
+      "id": 58,
+      "status": "fixed",
+      "change": "Removed letter references from explanation",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/jobs-tutorial",
+      "evidence": "Verified against Debugging and Deploying documentation"
+    },
+    {
+      "id": 59,
+      "status": "fixed",
+      "change": "Updated ref to metric-views/create from entity-relationship-diagram",
+      "evidence_url": "https://docs.databricks.com/aws/en/uc-semantics/metric-views/create",
+      "evidence": "Verified against Data Modeling documentation"
+    },
+    {
+      "id": 60,
+      "status": "fixed",
+      "change": "Removed letter references from explanation and optExpl; removed 'both'",
+      "evidence_url": "https://docs.databricks.com/aws/en/tables/clustering",
+      "evidence": "Verified against Data Modeling documentation"
+    }
+  ]
+}

@@ -1,0 +1,388 @@
+{
+ "questions": [
+  {
+   "id": 31,
+   "domain": "Developing Code",
+   "topic": "Local unit tests with pytest and Databricks Connect",
+   "stem": "Your team develops PySpark transformations in Git repositories and must validate them locally before deploying to production. You need to run unit tests using pytest against live Databricks compute (not mocked) to ensure data quality rules match the actual Spark behavior. The tests must run on a developer laptop connected to a corporate VPN, and you must not modify existing tests or add test dependencies. Which approach satisfies these constraints?",
+   "code": {
+    "lang": "python",
+    "src": "import pytest\nfrom pyspark.sql import SparkSession\n\n@pytest.fixture(scope='session')\ndef spark():\n    # Databricks Connect provides this automatically\n    return SparkSession.getActiveSession()\n\ndef test_data_quality(spark):\n    df = spark.sql('SELECT * FROM my_catalog.my_schema.test_table')\n    assert df.filter('age <= 0').count() == 0  # All ages must be positive\n    assert df.filter('email NOT LIKE \"%@%\"').count() == 0  # Email validation"
+   },
+   "options": {
+    "A": "Configure Databricks Connect in the laptop's Python environment, install pytest, write tests that use `spark` fixture from `pyspark.sql`, and run `pytest` directly. Databricks Connect automatically creates a session to remote compute.",
+    "B": "Mock all Spark operations using unittest.mock to simulate DataFrame operations locally, import the transformation module, and run pytest with mock fixtures.",
+    "C": "Export data as Parquet files, load them with local PySpark, run tests with local compute, and compare results with production runs manually.",
+    "D": "Use Databricks Repos to sync code, deploy a test cluster via API, run `databricks runs submit` with pytest as the main module, and parse job logs for test results."
+   },
+   "answer": "A",
+   "explanation": "Databricks Connect enables pytest to run against live Databricks compute by providing a `spark` context that communicates with a remote cluster. Mocking the data loses real Spark semantics. Manual export-and-compare is fragile and doesn't scale. Remote cluster management adds unnecessary overhead.",
+   "optExpl": {
+    "A": "Correct: Databricks Connect provides a remote Spark session to pytest tests without modifying test code or adding mocks.",
+    "B": "Incorrect: Mocking Spark behavior defeats the purpose of validating against actual Spark semantics and data distribution.",
+    "C": "Incorrect: Manual export-and-compare is not automated, does not scale to frequent test runs, and breaks the constraint of not modifying tests.",
+    "D": "Incorrect: While viable, this approach requires managing test cluster lifecycle and parsing logs, which is more complex than Databricks Connect."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/databricks-connect/cluster-config"
+   ]
+  },
+  {
+   "id": 32,
+   "domain": "Developing Code",
+   "topic": "Stream-static join semantics",
+   "stem": "A Declarative Pipeline joins a streaming table `orders` (source: Kafka) with a slowly-changing `products` lookup table (source: Delta). The join is `orders.product_id = products.product_id`. One week into production, the products table receives a price update (same product_id, new price) but no rows are inserted or deleted. After this update, how do the already-processed orders rows appear in the output?",
+   "code": null,
+   "options": {
+    "A": "All orders rows are dropped and reprocessed from the Kafka beginning offset to pick up the new price.",
+    "B": "Orders rows are re-materialized with the new product price in the next pipeline run because Structured Streaming tracks product_id changes.",
+    "C": "Orders rows that were already processed retain the product price from when they were joined; future orders get the new price. The join is immutable to backfill.",
+    "D": "The pipeline fails with a schema mismatch because the products table changed after orders were processed."
+   },
+   "answer": "C",
+   "explanation": "Structured Streaming joins are deterministic per micro-batch: a streaming row joined with a static row produces one output row, and that row is not retroactively joined again. The static table snapshot is re-read on the next micro-batch for new streaming rows only. Updating the static table does not trigger backfill of old rows.",
+   "optExpl": {
+    "A": "Incorrect: The pipeline does not replay Kafka; Structured Streaming checkpoints ensure offsets are tracked and rows are not duplicated.",
+    "B": "Incorrect: Structured Streaming does not automatically re-join historical rows when the static side changes; it processes each new micro-batch independently.",
+    "C": "Correct: Stream-static join semantics are immutable per row; updates to the static table only affect future micro-batches.",
+    "D": "Incorrect: A non-schema change (value update) does not cause a schema mismatch or pipeline failure."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ldp/concepts/streaming-tables"
+   ]
+  },
+  {
+   "id": 33,
+   "domain": "Developing Code",
+   "topic": "Trigger.AvailableNow for incremental batch processing",
+   "stem": "You have a batch job that must process all available data in a Delta table at startup and then process only new rows every minute. You are using Structured Streaming with `Trigger.AvailableNow()`. What is the behavior of the first micro-batch when the job starts? How does this differ from `Trigger.Once()`?",
+   "code": null,
+   "options": {
+    "A": "Time-windowed processing: `Trigger.AvailableNow()` waits one minute before processing; on first run, it processes zero rows.",
+    "B": "Checkpoint-based filtering: `Trigger.AvailableNow()` processes only new rows after any prior checkpoint; no prior checkpoint means zero rows initially.",
+    "C": "Full load then incremental: `Trigger.AvailableNow()` processes all available rows up to the current offset on first run, then processes new arrivals on subsequent triggers.",
+    "D": "Same as Trigger.Once: `Trigger.Once` and `Trigger.AvailableNow()` have identical semantics; the naming is just a convention difference."
+   },
+   "answer": "C",
+   "explanation": "`Trigger.AvailableNow()` is a one-time, finite-duration trigger designed for incremental batch processing. On first run, it processes all available data up to the current offset (no prior checkpoint required). On subsequent runs, it processes new arrivals since the last checkpoint. `Trigger.Once()` stops after a single run, while `Trigger.AvailableNow()` can be invoked repeatedly.",
+   "optExpl": {
+    "A": "Incorrect: `Trigger.AvailableNow()` does not use a fixed time window; it processes all available rows immediately on first invocation.",
+    "B": "Incorrect: `Trigger.AvailableNow()` does not require prior state; on first run it consumes all current data, not zero rows.",
+    "C": "Correct: First run processes all available data; subsequent runs process new arrivals, enabling efficient incremental batch workflows.",
+    "D": "Incorrect: `Trigger.AvailableNow()` and `Trigger.Once()` have different semantics; AvailableNow repeats while Once stops after one run."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/structured-streaming/triggers"
+   ]
+  },
+  {
+   "id": 34,
+   "domain": "Developing Code",
+   "topic": "File arrival trigger vs table update trigger vs scheduled job",
+   "stem": "Your data lake receives CSV files hourly in an S3 prefix. You need to ingest them into a Delta table, run a lightweight transform, and load results into a BI tool. The team prefers minimal operational overhead and immediate feedback on failures. You must choose between: (1) Lakeflow Connect with file arrival trigger, (2) Declarative Pipeline with table update trigger, (3) Lakeflow Job scheduled hourly. Which is best?",
+   "code": null,
+   "options": {
+    "A": "Lakeflow Connect with file arrival trigger: automatically detects new files and ingests them into a table, with built-in schema inference.",
+    "B": "Declarative Pipeline with table update trigger: triggers the pipeline when the source table changes, but this requires pre-staging files into a Delta table first.",
+    "C": "Lakeflow Job scheduled hourly: gives explicit control over timing, supports retry logic, and allows mixing batch and stream tasks in one workflow.",
+    "D": "File arrival trigger is not available in Databricks; use a scheduled job with `ListFiles` API to poll S3 hourly."
+   },
+   "answer": "A",
+   "explanation": "File arrival triggers in Lakeflow Connect are the most appropriate for this scenario: they monitor S3 for new files, trigger ingestion automatically, and handle schema inference. Pre-staging into Delta adds complexity and is unnecessary. Scheduled jobs introduce latency between file arrival and processing. External polling is not the natural choice for Databricks ingestion.",
+   "optExpl": {
+    "A": "Correct: File arrival trigger is designed for this use case: automatic detection, minimal overhead, and immediate feedback.",
+    "B": "Incorrect: Pre-staging adds complexity and is less immediate; table update triggers serve downstream pipeline changes.",
+    "C": "Incorrect: While viable, scheduled jobs do not provide immediate feedback on file arrival and add fixed latency.",
+    "D": "Incorrect: File arrival triggers are available in Lakeflow Connect and are the natural choice here."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/jobs/file-arrival-triggers"
+   ]
+  },
+  {
+   "id": 35,
+   "domain": "Developing Code",
+   "topic": "Continuous vs triggered pipeline mode",
+   "stem": "You are migrating a legacy batch-based data pipeline to Declarative Pipelines. The pipeline must process micro-batches of data every 5 minutes, with no data loss on failure. The team needs simple failure recovery and SLA-driven scheduling. You see two deployment options: continuous mode (runs constantly) and triggered mode (runs on-demand). Which mode should you choose and why?",
+   "code": null,
+   "options": {
+    "A": "Continuous mode: provides the lowest latency by running constantly; failures automatically recover by restarting the pipeline context.",
+    "B": "Triggered mode: each trigger runs as an independent job with scheduled retries; failures are isolated and recovery is orchestrated via the scheduler.",
+    "C": "Continuous mode: automatically adapts latency to data arrival rate and ensures consistent micro-batch timing without manual scheduling.",
+    "D": "Either mode is equivalent; continuous has lower latency while triggered has lower cost; choose based on team preference."
+   },
+   "answer": "B",
+   "explanation": "Triggered mode is ideal for this scenario. Each trigger runs independently, so failures are isolated and retries can be managed via the orchestration layer (Lakeflow Jobs). Continuous mode runs a single long-lived context, making failure recovery complex and less predictable. Triggered mode also provides better cost efficiency and audit trails for compliance.",
+   "optExpl": {
+    "A": "Incorrect: Continuous mode runs a single context; restarting on failure is complex and may lose recent state.",
+    "B": "Correct: Triggered mode isolates each run, enabling simple retry logic and predictable failure handling via external scheduling.",
+    "C": "Incorrect: Both modes process data at their scheduled cadence; continuous does not inherently adapt better to arrival rates.",
+    "D": "Incorrect: The modes differ significantly in failure recovery and operability, not just cost; choice directly impacts SLA compliance."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-engineering/procedural-vs-declarative"
+   ]
+  },
+  {
+   "id": 36,
+   "domain": "Developing Code",
+   "topic": "Temporary views / private datasets inside a declarative pipeline",
+   "stem": "Inside a Declarative Pipeline, you define a temporary view `temp_cleaned` from a streaming table source, then create another streaming table that selects from this temporary view. The pipeline runs successfully on the first trigger. On the second trigger, the pipeline fails with 'temp_cleaned not found'. What is the root cause of this failure, and how would you fix it?",
+   "code": {
+    "lang": "python",
+    "src": "from pyspark import pipelines as dp\n\nwith dp.create_pipeline('test_pipeline') as pipeline:\n    pipeline.create_streaming_table('source')\n    spark.sql('CREATE OR REPLACE TEMPORARY VIEW temp_cleaned AS SELECT * FROM source')\n    pipeline.create_streaming_table(\n        'output',\n        query='SELECT * FROM temp_cleaned'\n    )"
+   },
+   "options": {
+    "A": "Session persistence: temporary views persist if the source table has data; the failure indicates the source table is empty on the second trigger.",
+    "B": "Session scope: temporary views are session-scoped and dropped at session end; each pipeline trigger starts a fresh session without the view.",
+    "C": "Syntax issue: Temporary views require explicit registration with `spark.sql.createTempView()` instead of `CREATE OR REPLACE`.",
+    "D": "Pipeline limitation: Declarative Pipelines forbid temporary views; replace with a private dataset to persist the logic across triggers."
+   },
+   "answer": "B",
+   "explanation": "Temporary views are session-scoped and live only for the duration of the current Spark session. Each pipeline trigger executes in a new session, so temporary views created in one run are dropped when the session ends. The second trigger starts a fresh session and cannot find the view. To persist logic across triggers, use private datasets (Delta tables in the pipeline's namespace) or reference tables directly without intermediate views.",
+   "optExpl": {
+    "A": "Incorrect: Session persistence does not depend on source data; the issue is that sessions are isolated per pipeline trigger.",
+    "B": "Correct: Temporary views are dropped when the session ends; each trigger begins with no temporary views defined.",
+    "C": "Incorrect: The syntax shown is valid; the root cause is session scope, not syntax issues.",
+    "D": "Incorrect: Temporary views are allowed but are the wrong pattern; private datasets or direct table references are the correct fix."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-engineering/procedural-vs-declarative"
+   ]
+  },
+  {
+   "id": 37,
+   "domain": "Developing Code",
+   "topic": "Dynamic value references in job parameters",
+   "stem": "You have a Lakeflow Job defined in a bundle that runs daily at 2 AM UTC. The job must pass the previous day's date (YYYY-MM-DD format) to a notebook as a parameter. The notebook endpoint expects the parameter `run_date`. You need to use a dynamic macro syntax that references job metadata. Which parameter value syntax will work?",
+   "code": {
+    "lang": "yaml",
+    "src": "resources:\n  jobs:\n    daily_job:\n      name: daily_etl\n      schedule:\n        quartz_cron_expression: \"0 0 2 * * ?\" # 2 AM UTC daily\n      tasks:\n        - task_key: etl_task\n          notebook_task:\n            notebook_path: /Users/me/notebook\n            base_parameters:\n              run_date: \"{{job.start_time.iso_date}}\""
+   },
+   "options": {
+    "A": "`run_date: \"{{job.start_time.iso_date}}\"` is the correct syntax for the job start time ISO date.",
+    "B": "`run_date: \"${env.PREVIOUS_DAY}\"` requires setting an environment variable in the job scheduler.",
+    "C": "`run_date: \"{{job.previous_day}}\"` uses a built-in Databricks macro for the previous day.",
+    "D": "Dynamic date parameters are not supported; the notebook must compute the date using Python `datetime`."
+   },
+   "answer": "A",
+   "explanation": "`{{job.start_time.iso_date}}` is the correct macro syntax for Databricks bundle job parameters. It resolves to the ISO date (YYYY-MM-DD) of the job's start time. The job runs at 2 AM, so `job.start_time` reflects that time; the notebook can subtract one day in code if the previous day is specifically needed. No built-in previous_day macro exists.",
+   "optExpl": {
+    "A": "Correct: This is the proper macro syntax for accessing job start time as an ISO date in Databricks bundles.",
+    "B": "Incorrect: Environment variables set by the scheduler are not the standard pattern for Databricks job parameters.",
+    "C": "Incorrect: No built-in `{{job.previous_day}}` macro exists; use `job.start_time` and compute offsets in code.",
+    "D": "Incorrect: Dynamic macros are fully supported; using them is simpler than computing dates in the notebook."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/job-parameters"
+   ]
+  },
+  {
+   "id": 38,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "COPY INTO idempotency and re-runs",
+   "stem": "You use `COPY INTO` to ingest JSON files from S3 into a Delta table. On day 1, you load 100 files; on day 2, you run the same `COPY INTO` command and load 50 new files. If you re-run the day 2 command a third time, how many files are ingested in the third run?",
+   "code": {
+    "lang": "sql",
+    "src": "COPY INTO my_catalog.my_schema.target_table\nFROM (SELECT * FROM read_files('s3://mybucket/data/'))\nFILEFORMAT = JSON\nCOPY_OPTIONS = ('force' = 'false')"
+   },
+   "options": {
+    "A": "0 files; after the second run, all files are deleted from S3 to prevent re-ingestion.",
+    "B": "Depends on the table's `tblproperties`; if `COPY_INT_LOADED_FILES_MANIFEST` is set, it tracks files, otherwise it re-loads all.",
+    "C": "0 files; `COPY INTO` with `force='false'` (the default) is idempotent and skips already-loaded files based on a manifest.",
+    "D": "50 files again; `COPY INTO` re-loads all files matching the pattern unless explicitly excluded."
+   },
+   "answer": "C",
+   "explanation": "`COPY INTO` maintains an internal manifest of loaded files (when `force='false'`). On re-runs, it compares incoming files against the manifest and skips already-loaded files. So the third run ingests 0 new files. This idempotency is a key feature of `COPY INTO` for safe re-runs.",
+   "optExpl": {
+    "A": "Incorrect: Files are not deleted from S3; the manifest tracking is internal to Databricks.",
+    "B": "Incorrect: The manifest is automatic with `force='false'`; no explicit table property is needed.",
+    "C": "Correct: `COPY INTO` tracks loaded files and re-runs against the same source skip already-processed files.",
+    "D": "Incorrect: Re-loading all files is what happens with `force='true'`; the default prevents re-load."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/delta-copy-into"
+   ]
+  },
+  {
+   "id": 39,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Making Delta tables readable as Iceberg by an external engine",
+   "stem": "Your team uses Databricks for ELT and Snowflake for analytics. You have a Delta table in Databricks and want Snowflake to query it directly without ETL. You enable Iceberg compatibility on the Delta table. What additional configuration must you do so that Snowflake can read the table?",
+   "code": null,
+   "options": {
+    "A": "Enable Delta Uniform on the table; Snowflake can then query the table as Iceberg via Databricks' published Iceberg metadata format.",
+    "B": "Export the Delta table to Iceberg format explicitly using `CONVERT TABLE ... TO ICEBERG`; Delta then supports Iceberg-style reads.",
+    "C": "Set up Iceberg REST Catalog endpoint in Snowflake and configure Snowflake credentials to access the same S3 bucket as Databricks.",
+    "D": "Use Databricks-to-Snowflake replication; Iceberg compatibility alone does not enable cross-engine queries."
+   },
+   "answer": "A",
+   "explanation": "Delta Uniform (also called Delta-Iceberg compatibility) allows Databricks to write Delta tables with Iceberg metadata side-by-side. Snowflake and other external engines can read the Iceberg metadata to query the underlying data files. This is simpler than full conversion and maintains Delta as the primary format on Databricks. Converting to native Iceberg changes the primary format and loses Delta features. Catalog setup is more complex. Replication is less direct than Uniform.",
+   "optExpl": {
+    "A": "Correct: Delta Uniform publishes Iceberg metadata alongside Delta; external engines read Iceberg metadata to access the same data files.",
+    "B": "Incorrect: Converting to Iceberg changes the primary format and loses some Delta features; Uniform is the better approach for external read-only access.",
+    "C": "Incorrect: While an Iceberg REST Catalog could work, it requires complex setup; Delta Uniform is simpler.",
+    "D": "Incorrect: Delta Uniform does enable cross-engine queries without replication."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/delta/iceberg-reads"
+   ]
+  },
+  {
+   "id": 40,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Lakeflow Connect prerequisites for MySQL and PostgreSQL",
+   "stem": "You are setting up Lakeflow Connect to ingest data from a self-managed PostgreSQL database into Databricks. The source database has high transaction volume and you want to capture inserts, updates, and deletes in near real-time. What is a prerequisite you must configure on the PostgreSQL server?",
+   "code": null,
+   "options": {
+    "A": "Enable logical replication on PostgreSQL by setting `wal_level=logical` in postgresql.conf and creating a replication slot.",
+    "B": "PostgreSQL automatically supports CDC via WAL (Write-Ahead Log); no configuration is needed, just credentials.",
+    "C": "Set up a dedicated PostgreSQL replica for change capture; Lakeflow Connect cannot read CDC from the primary.",
+    "D": "Configure a Debezium connector inside PostgreSQL; Databricks cannot read CDC directly from the database."
+   },
+   "answer": "A",
+   "explanation": "PostgreSQL requires logical replication to be enabled (`wal_level=logical`) and a replication slot to be created for Lakeflow Connect to capture changes. This is a prerequisite that must be done by a database administrator. While WAL exists on all PostgreSQL instances, logical replication must be explicitly enabled; it is not automatic. A replica is not required; Lakeflow Connect can read CDC from the primary. Lakeflow Connect has native PostgreSQL CDC connectors; Debezium is not required.",
+   "optExpl": {
+    "A": "Correct: Logical replication must be enabled and a replication slot created for Lakeflow Connect to capture CDC from PostgreSQL.",
+    "B": "Incorrect: While WAL exists on all PostgreSQL instances, logical replication must be explicitly enabled; it is not automatic.",
+    "C": "Incorrect: A replica is not required; Lakeflow Connect can read CDC from the primary using replication slots.",
+    "D": "Incorrect: Lakeflow Connect has native PostgreSQL CDC connectors; Debezium is not required."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview"
+   ]
+  },
+  {
+   "id": 41,
+   "domain": "Data Manipulation",
+   "topic": "Running total with ROWS window frame",
+   "stem": "Your analytics team needs to compute a running total of daily sales amounts within each geographic region, ordered chronologically by date. The analysis should accumulate sales from the first day of each region's records through the current day. You write a window function query. Which window frame specification is correct for this running total calculation?",
+   "code": {
+    "lang": "sql",
+    "src": "SELECT region, sale_date, amount,\n  SUM(amount) OVER (\n    PARTITION BY region\n    ORDER BY sale_date\n    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\n  ) AS cumulative_sales\nFROM daily_sales\nORDER BY region, sale_date;"
+   },
+   "options": {
+    "A": "Incorrect: missing `NULLS LAST` in the ORDER BY clause; the query will fail if sale_date contains any NULL values.",
+    "B": "Incorrect: PARTITION BY region is too coarse; it should include `PARTITION BY region, YEAR(sale_date)` to reset annually.",
+    "C": "Correct: `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` sums from the first row in the partition to the current row, implementing the running total.",
+    "D": "Incorrect: should use `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` for correct tie handling in grouped dates."
+   },
+   "answer": "C",
+   "explanation": "The query correctly uses `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` to compute a row-based cumulative sum. For each row, it sums from the first row in its region partition to the current row. This implements the running total from the first day of the region to today. `RANGE` would also work but is not necessary; `ROWS` is more direct for this requirement.",
+   "optExpl": {
+    "A": "Incorrect: NULL handling in ORDER BY is automatic; explicit NULLS LAST is only needed for specific ordering preferences.",
+    "B": "Incorrect: A region-level running total (resetting per region, not per year) matches the requirement exactly.",
+    "C": "Correct: ROWS frame implements cumulative sum from the partition start to the current row, as required.",
+    "D": "Incorrect: ROWS is more appropriate here; RANGE would complicate ties but is not needed for this simple running total."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-window-functions"
+   ]
+  },
+  {
+   "id": 42,
+   "domain": "Data Manipulation",
+   "topic": "MERGE with WHEN NOT MATCHED BY SOURCE",
+   "stem": "You have a fact table `sales_fact` that is the source of truth. Quarterly, you receive a new extract from the OLTP system in a staging table `sales_staging`. Your MERGE statement must: (1) insert new records from staging, (2) update matching records if values changed, and (3) delete records in the fact table that are no longer in staging. Which clause handles requirement (3)?",
+   "code": {
+    "lang": "sql",
+    "src": "MERGE INTO my_catalog.my_schema.sales_fact AS t\nUSING my_catalog.my_schema.sales_staging AS s\nON t.sale_id = s.sale_id\nWHEN MATCHED AND t.amount != s.amount THEN UPDATE SET amount = s.amount\nWHEN NOT MATCHED THEN INSERT (sale_id, amount, date) VALUES (s.sale_id, s.amount, s.date)\nWHEN NOT MATCHED BY SOURCE THEN DELETE;"
+   },
+   "options": {
+    "A": "`WHEN NOT MATCHED BY TARGET THEN DELETE` — removes rows from the source that do not exist in the target.",
+    "B": "A separate `DELETE FROM sales_fact WHERE id NOT IN (SELECT id FROM sales_staging)` statement is required; MERGE does not support this scenario.",
+    "C": "`WHEN NOT MATCHED THEN DELETE` — removes rows from the target that do not match the source.",
+    "D": "`WHEN NOT MATCHED BY SOURCE THEN DELETE` — removes rows from the target that exist in target but not in source."
+   },
+   "answer": "D",
+   "explanation": "`WHEN NOT MATCHED BY SOURCE THEN DELETE` removes rows from the target (sales_fact) that do not have a match in the source (sales_staging). This is the correct clause for requirement (3). The NOT MATCHED BY TARGET syntax is incorrect. The NOT MATCHED clause removes source rows. A separate DELETE statement could work but is not the MERGE approach.",
+   "optExpl": {
+    "A": "Incorrect: This removes source rows; we want to remove target rows.",
+    "B": "Incorrect: MERGE supports `WHEN NOT MATCHED BY SOURCE`, so a separate DELETE is unnecessary.",
+    "C": "Incorrect: The correct syntax is `WHEN NOT MATCHED BY SOURCE`, not `WHEN NOT MATCHED`.",
+    "D": "Correct: `WHEN NOT MATCHED BY SOURCE THEN DELETE` deletes target rows with no source match, implementing soft deletes or purge logic."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/delta-merge-into"
+   ]
+  },
+  {
+   "id": 43,
+   "domain": "Data Manipulation",
+   "topic": "Choosing ai_classify / ai_extract vs ai_query",
+   "stem": "You have a CSV file of customer feedback with 100K rows, each containing unstructured text in an `feedback` column. You need to (1) extract the product name mentioned in each feedback and (2) classify the sentiment (positive/negative/neutral). You want minimal latency for querying results. Should you use `ai_classify`, `ai_extract`, or `ai_query` SQL functions?",
+   "code": null,
+   "options": {
+    "A": "Use `ai_classify` twice: once for sentiment, and again with custom logic to extract product name as a classification task.",
+    "B": "Use `ai_query` for all tasks; it is the most flexible function for complex NLP workloads.",
+    "C": "Use `ai_query` for extraction and `ai_classify` for sentiment; they are interchangeable for most NLP tasks.",
+    "D": "Use `ai_extract` for product name (structured extraction) and `ai_classify` for sentiment (categorization), then materialize results into a table."
+   },
+   "answer": "D",
+   "explanation": "Each AI function is optimized for its task: `ai_extract` finds and returns specific data from text (product name), and `ai_classify` assigns text to predefined categories (sentiment). Using each for its intended purpose is efficient and clear. Materializing results into a table enables fast queries. Using ai_classify twice conflates the functions. Using ai_query for both tasks misses optimization. ai_query alone is overly general.",
+   "optExpl": {
+    "A": "Incorrect: `ai_classify` is for categorization, not extraction; misusing it for product name extraction is inefficient.",
+    "B": "Incorrect: `ai_query` is for open-ended questions; task-specific functions are more efficient.",
+    "C": "Incorrect: `ai_query` and `ai_classify` are not interchangeable; each has different semantics and optimization.",
+    "D": "Correct: `ai_extract` finds structured values (product names); `ai_classify` assigns categories (sentiments); materialization enables fast access."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_extract"
+   ]
+  },
+  {
+   "id": 44,
+   "domain": "Data Manipulation",
+   "topic": "expect_all_or_drop plus quarantine table",
+   "stem": "Your data quality pipeline expects all rows to meet certain conditions (e.g., age > 0, email contains '@'). Rows that fail the validation must be quarantined in a separate table for later review and investigation, not dropped from the pipeline. How do you implement this dual-path approach in a Declarative Pipeline?",
+   "code": {
+    "lang": "python",
+    "src": "from pyspark import pipelines as dp\n\nwith dp.create_pipeline('test_pipeline') as pipeline:\n    # Source table\n    pipeline.create_streaming_table('customers')\n    \n    # Clean rows only\n    pipeline.create_streaming_table(\n        'customers_clean',\n        query='''SELECT * FROM customers\n                 WHERE age > 0 AND email LIKE '%@%'''\n    )\n    \n    # Quarantine rows that fail\n    pipeline.create_streaming_table(\n        'customers_quarantine',\n        query='''SELECT * FROM customers\n                 WHERE age <= 0 OR email NOT LIKE '%@%'''\n    )"
+   },
+   "options": {
+    "A": "Use `expect_all_or_drop` with auto_quarantine=true; it automatically routes invalid rows to a `{table_name}_invalid` table.",
+    "B": "Use `expect_all_or_quarantine` function; Databricks provides this specifically for this use case.",
+    "C": "Create a second streaming table with the inverse WHERE clause to select failing rows, then insert into a quarantine table.",
+    "D": "Use `expect_all_or_drop` for the clean path only; quarantine is handled separately via MERGE into the quarantine table."
+   },
+   "answer": "C",
+   "explanation": "`expect_all_or_drop` drops invalid rows but does not auto-quarantine them. To capture rejected rows, create a second streaming table that selects rows failing the constraint (the inverse WHERE clause). This explicit pattern lets you inspect invalid data while the clean path applies expectations. Auto-quarantine options do not exist in Databricks.",
+   "optExpl": {
+    "A": "Incorrect: `expect_all_or_drop` does not have an auto_quarantine flag; quarantine must be explicit.",
+    "B": "Incorrect: There is no `expect_all_or_quarantine` function; use separate streaming tables for the two paths.",
+    "C": "Correct: Define a second streaming table with the inverse WHERE clause to capture rows that fail the clean-path filter.",
+    "D": "Incorrect: While MERGE could work, defining a second streaming table with the inverse query is the standard pattern."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ldp/expectation-patterns"
+   ]
+  },
+  {
+   "id": 45,
+   "domain": "Monitoring and Alerting",
+   "topic": "Serverless cost by user or budget policy in system.billing.usage",
+   "stem": "Your organization runs serverless compute jobs across many users and needs to track costs per user to enforce budget controls. You want to identify the top cost consumers and flag users exceeding spending thresholds set by your finance team. Which system table will you query, and how?",
+   "code": {
+    "lang": "sql",
+    "src": "SELECT user_id, SUM(cost) as total_cost, COUNT(*) as job_count\nFROM system.billing.usage\nWHERE compute_category = 'SERVERLESS_COMPUTE'\n  AND usage_date >= CURRENT_DATE - 30\nGROUP BY user_id\nORDER BY total_cost DESC;"
+   },
+   "options": {
+    "A": "Query `system.billing.usage` by user_id and filter on `compute_category = 'SERVERLESS_COMPUTE'`; budget thresholds are stored separately in a budget policy table.",
+    "B": "Use `system.admin.jobs_cost` instead; it tracks user-level costs directly for all compute types.",
+    "C": "Use `system.compute.serverless` table; it is the authoritative source for serverless consumption by user.",
+    "D": "Query `system.billing.usage` grouped by user_id and compute_category; this table contains the definitive billing records for cost governance."
+   },
+   "answer": "D",
+   "explanation": "`system.billing.usage` is the authoritative table for all billing and usage data, including serverless compute costs aggregated by user. Grouping by user_id reveals per-user consumption; policy enforcement is application logic on top of these query results. Other tables like `system.admin.jobs_cost` track jobs but not user-level aggregates.",
+   "optExpl": {
+    "A": "Incorrect: While policies exist elsewhere, the query source is correct; but this does not give the full picture of governance.",
+    "B": "Incorrect: `system.admin.jobs_cost` tracks job execution costs, not rolled-up user-level consumption.",
+    "C": "Incorrect: `system.compute.serverless` is not a billing table; use `system.billing.usage` for cost analysis.",
+    "D": "Correct: `system.billing.usage` is the source of truth for serverless compute cost by user and category."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/serverless-billing"
+   ]
+  }
+ ]
+}

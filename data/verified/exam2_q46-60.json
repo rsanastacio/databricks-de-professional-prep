@@ -1,0 +1,376 @@
+{
+ "questions": [
+  {
+   "id": 46,
+   "domain": "Monitoring and Alerting",
+   "topic": "Listing failed runs with Jobs API or CLI",
+   "stem": "Your team runs dozens of Lakeflow Jobs on various schedules. You want to set up a daily alert that discovers all jobs that failed in the last 24 hours and surfaces their error messages and status. The alert must run automatically without manual job enumeration. Which approach is best?",
+   "code": {
+    "lang": "sql",
+    "src": "SELECT job_id, run_id, state, error_message, end_time\nFROM system.lakeflow.job_run_timeline\nWHERE state = 'FAILED'\n  AND end_time >= CURRENT_TIMESTAMP - INTERVAL 1 DAY\nORDER BY end_time DESC;\n\n-- Send this query result to alerting system (e.g., Slack, PagerDuty)"
+   },
+   "options": {
+    "A": "Use the Databricks CLI to loop through all jobs with `databricks jobs list-runs --job-id <id> --state FAILED` for each.",
+    "B": "Query `system.jobs.run_history` with a filter on `state='FAILED'` and `end_time >= CURRENT_TIMESTAMP - INTERVAL 1 DAY`.",
+    "C": "Use the REST API `GET /api/2.1/jobs/list-runs` with `state_filter='FAILED'` in a loop across all job IDs.",
+    "D": "Use `databricks runs list` globally; it automatically aggregates failed runs from all jobs without looping."
+   },
+   "answer": "B",
+   "explanation": "Querying `system.lakeflow.job_run_timeline` is the most efficient approach: a single SQL query provides a centralized view of all job runs across the workspace, enabling easy filtering, aggregation, and automated alerting. It avoids the need for manual job enumeration or API pagination loops.",
+   "optExpl": {
+    "A": "Incorrect: Requires enumerating all jobs and CLI looping; inefficient for automation and many jobs.",
+    "B": "Correct: System table query provides a centralized view of all runs; no enumeration needed; SQL enables easy filtering and alerts.",
+    "C": "Incorrect: Works but requires handling pagination and job loops; more complex than a system table query.",
+    "D": "Incorrect: `databricks runs list` does not aggregate across jobs; you must filter by specific job-id."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/jobs"
+   ]
+  },
+  {
+   "id": 47,
+   "domain": "Monitoring and Alerting",
+   "topic": "Data quality monitoring / anomaly detection on a table",
+   "stem": "Your data lake includes a daily transaction table with millions of rows ingested from a point-of-sale system. You want to automatically alert if the daily transaction count drops by more than 50% compared to the 30-day rolling average, as this indicates possible upstream data failures. Which Databricks feature is best suited?",
+   "code": null,
+   "options": {
+    "A": "Predictive Optimization: automatically analyzes table statistics and surfaces anomalies in performance.",
+    "B": "Anomaly Detection: in Data Governance, define rules that compare current row counts to statistical baselines and trigger alerts on deviation.",
+    "C": "Data Quality Monitoring (DQM): define expectations on row count thresholds and violations trigger alerts.",
+    "D": "Custom monitoring: query `system.tables.column_stats` to manually compute rolling averages and schedule alerts via a notebook."
+   },
+   "answer": "B",
+   "explanation": "Anomaly Detection in Data Governance detects unexpected changes in table metrics (row counts, column distributions, etc.) using statistical baselines. It compares current values against historical patterns and alerts on deviations, which is perfect for detecting the 50% drop scenario. Predictive Optimization targets query performance, not volume anomalies. DQM focuses on data content quality, not volume shifts.",
+   "optExpl": {
+    "A": "Incorrect: Predictive Optimization optimizes query performance, not detects volume anomalies.",
+    "B": "Correct: Anomaly Detection uses statistical baselines to flag unexpected metric changes like volume drops.",
+    "C": "Incorrect: DQM alerts on constraint violations (e.g., null rates, schema changes), not statistical volume deviations.",
+    "D": "Incorrect: Custom notebook logic is error-prone and not scalable; built-in anomaly detection is designed for this."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-quality-monitoring/anomaly-detection/"
+   ]
+  },
+  {
+   "id": 48,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Materialized view refresh falling back to full recompute",
+   "stem": "You have a materialized view on a large fact table, defined as `SELECT SUM(amount) FROM fact_table WHERE date >= CURRENT_DATE - 30`. The view refreshes incrementally most days, but occasionally it performs a full recompute and takes 2 hours instead of 2 minutes. What is a likely cause?",
+   "code": null,
+   "options": {
+    "A": "The fact table's clustering key was changed or the table was recreated; Databricks must recompute the view from scratch.",
+    "B": "The 30-day window on `date >= CURRENT_DATE - 30` expanded; Databricks detected an unbounded range and re-evaluated.",
+    "C": "The materialized view reached a data size threshold and automatically converted to full refresh mode.",
+    "D": "A schema change on the fact table (e.g., column rename, data type change) triggered a full refresh as a safety measure."
+   },
+   "answer": "A",
+   "explanation": "Materialized view incremental refresh relies on the underlying table's clustering and delta encoding. If the clustering key changes or the table is rewritten, incremental refresh cannot be used and Databricks falls back to full recompute. Time-window expansion is not how Databricks handles this; the window remains fixed. Size-based refresh mode changes are not a feature. Schema changes would cause the query to fail entirely, not fall back to full refresh.",
+   "optExpl": {
+    "A": "Correct: Changes to clustering, table rewrites, or schema incompatibilities force full recompute of materialized views.",
+    "B": "Incorrect: A fixed window does not expand; Databricks would not re-interpret `CURRENT_DATE - 30` as unbounded.",
+    "C": "Incorrect: Materialized views do not have a size threshold that triggers mode changes.",
+    "D": "Incorrect: Schema changes would cause the view refresh to fail, not silently fall back to full recompute."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/materialization"
+   ]
+  },
+  {
+   "id": 49,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Changing Liquid Clustering keys without rewriting the table",
+   "stem": "Your team has a large Delta table (500 GB) with Liquid Clustering on `(date, user_id)`. After analyzing query patterns, you discover that a new workload would be better served by clustering on `(user_id, product_id)` instead. You want to change the clustering key but avoid a full table rewrite due to compute cost and time constraints. Is this possible?",
+   "code": null,
+   "options": {
+    "A": "No, clustering key changes always require a full table rewrite; there is no escape from this cost.",
+    "B": "Yes, use `ALTER TABLE table_name CLUSTER BY` to change the key; new writes use the new key without touching existing data.",
+    "C": "Yes, but only if the new key includes all old clustering columns (e.g., you can add `product_id` but not remove `date`).",
+    "D": "No, Liquid Clustering keys are immutable after table creation; recreating the table is the only option."
+   },
+   "answer": "B",
+   "explanation": "Liquid Clustering keys can be changed via `ALTER TABLE table_name CLUSTER BY (new_columns)` without rewriting existing data. The new key applies prospectively to new writes; old data retains its prior clustering. This is a major advantage of Liquid Clustering over other indexing strategies. Keys can be changed freely to any new set of columns.",
+   "optExpl": {
+    "A": "Incorrect: Liquid Clustering is designed to support key changes without rewrites; this avoids the cost you are concerned about.",
+    "B": "Correct: `ALTER TABLE table_name CLUSTER BY` changes the key prospectively; no existing data is rewritten.",
+    "C": "Incorrect: Keys can be changed to any combination, not just supersets; prospective application is the whole point.",
+    "D": "Incorrect: Liquid Clustering keys are mutable; the ALTER TABLE approach is simpler than table recreation."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/tables/clustering"
+   ]
+  },
+  {
+   "id": 50,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Classic autoscaling cluster vs serverless jobs compute for spiky workload",
+   "stem": "Your team runs a nightly batch job that processes 500 GB of data in 5 minutes when busy, but varies from 0.5 to 5 GB on weekends. The job must complete within a fixed 1-hour SLA. You have two options: (1) classic autoscaling cluster sized for 5 GB, (2) serverless jobs compute. Which is more cost-effective and why?",
+   "code": null,
+   "options": {
+    "A": "Classic autoscaling: you pay only for the instances you use, and the cluster scales down on weekends, saving cost.",
+    "B": "Serverless: you pay per job run with per-second billing; the spiky workload means you pay exactly for the compute you use.",
+    "C": "Classic autoscaling: idle time between runs means you pay for stopped nodes; serverless avoids this.",
+    "D": "Serverless: while per-second billing is precise, you also pay Databricks' API overhead fee; classic autoscaling avoids this surcharge."
+   },
+   "answer": "B",
+   "explanation": "Serverless compute is more cost-effective for spiky workloads because you pay only for compute during the job run (per-second billing). Classic autoscaling clusters incur overhead from cluster startup, potential idle time, and node minimum costs even when scaled down. Serverless has no idle cost between runs. Classic clusters have startup overhead and minimum node costs even when scaled down. File deletion is not part of the autoscaling model. Databricks serverless has no separate \"API overhead fee\" in the pricing model.",
+   "optExpl": {
+    "A": "Incorrect: Even with scale-down, classic clusters have startup overhead and minimum node costs; serverless is simpler.",
+    "B": "Correct: Serverless per-second billing is ideal for spiky workloads; you pay only for active compute, not startup or idle.",
+    "C": "Incorrect: Classic clusters are typically stopped between runs, not kept idle; but startup overhead is still a cost.",
+    "D": "Incorrect: Serverless does not have a separate \"API overhead fee\"; the pricing model is based on compute used."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/compute/serverless/"
+   ]
+  },
+  {
+   "id": 51,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Result cache vs disk cache for dashboard workload",
+   "stem": "Your BI dashboard queries a 10 GB fact table with a filter on `date = TODAY()` and runs the same query 50 times per day as users refresh the dashboard. Query execution takes 30 seconds without caching. Should you rely on result cache or disk cache (Photon)?",
+   "code": null,
+   "options": {
+    "A": "Result cache: since the query is identical and deterministic (same date), the cached result is reused, and subsequent runs return in milliseconds.",
+    "B": "Disk cache (Photon): result cache is non-deterministic for time-based filters; disk cache scans filtered data faster.",
+    "C": "Result cache is disabled for SQL Warehouse queries; use Photon disk cache instead.",
+    "D": "Neither: configure a scheduled materialized view to pre-compute the filtered result and refresh it daily."
+   },
+   "answer": "A",
+   "explanation": "Result cache is ideal here: the query is deterministic (same date within a 24-hour window), and result caching preserves the result across runs. Subsequent runs hit the cache and return instantly. Result cache works perfectly for time-based filters when the query is identical; it is not non-deterministic. SQL Warehouse fully supports result caching. A materialized view would be a more complex solution than needed.",
+   "optExpl": {
+    "A": "Correct: Result cache reuses identical query results; dashboard users benefit from millisecond response times after the first run.",
+    "B": "Incorrect: Result cache is not non-deterministic for time-based filters; it is perfectly suited for this scenario.",
+    "C": "Incorrect: SQL Warehouse fully supports result caching; it is one of the primary benefits.",
+    "D": "Incorrect: While a materialized view could work, result caching is simpler and more direct for this use case."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dashboards/caching"
+   ]
+  },
+  {
+   "id": 52,
+   "domain": "Data Security and Compliance",
+   "topic": "Column mask using is_account_group_member",
+   "stem": "Your organization has a table `employees` with columns `name`, `salary`, `department`. A compliance requirement mandates that only members of the `finance_team` account group can view actual salary values; all other users should see NULL in that column. You need to enforce this at the table level for all queries. Which masking policy syntax correctly implements this restriction?",
+   "code": {
+    "lang": "sql",
+    "src": "CREATE OR REPLACE MASKING POLICY salary_mask\nAS (salary STRING)\nRETURNS STRING ->\n  CASE WHEN is_account_group_member('finance_team') THEN salary\n       ELSE NULL\n  END;\n\nALTER TABLE employees\nALTER COLUMN salary\nSET MASKING POLICY salary_mask;"
+   },
+   "options": {
+    "A": "Correct: `is_account_group_member()` checks if the current user belongs to the account-level group.",
+    "B": "Incorrect syntax: the function is `is_group_member()`, not `is_account_group_member()`.",
+    "C": "Correct for workspace groups only: `is_workspace_group_member()` should be used for workspace-local groups.",
+    "D": "Incorrect: group-based masking is not supported; use `current_user()` and role-based logic instead."
+   },
+   "answer": "A",
+   "explanation": "`is_account_group_member('finance_team')` is the correct function for account-level group membership in masking policies. The policy returns the actual salary value if the user is in the finance_team account group, otherwise NULL. This syntax is standard for Databricks account-scoped groups.",
+   "optExpl": {
+    "A": "Correct: `is_account_group_member()` is the right function for account-level group-based masking.",
+    "B": "Incorrect: The function is `is_account_group_member`, not `is_group_member`; that function does not exist.",
+    "C": "Incorrect: `is_account_group_member()` works for account groups; `is_workspace_group_member()` is for workspace-local groups.",
+    "D": "Incorrect: Group-based masking is fully supported and is the recommended pattern for role-based access control."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-column-mask"
+   ]
+  },
+  {
+   "id": 53,
+   "domain": "Data Security and Compliance",
+   "topic": "Retention-driven purge with delta.deletedFileRetentionDuration and time travel impact",
+   "stem": "Your organization has a table with sensitive personally identifiable information (PII) and must delete records older than 90 days to comply with GDPR regulations. You decide to run `VACUUM` with `delta.deletedFileRetentionDuration` set to 0 days to immediately purge old data files. What is the impact on time travel capabilities for historical queries?",
+   "code": null,
+   "options": {
+    "A": "Time travel remains enabled for old records; retention duration affects log files only, not query history.",
+    "B": "VACUUM fails with an error; Delta enforces a minimum retention period (7 days) to protect time travel.",
+    "C": "Time travel is lost for purged records; setting retention to 0 immediately deletes data files and their versions.",
+    "D": "Time travel works for recent records only; old records are deleted but you can query recent snapshots before deletion."
+   },
+   "answer": "C",
+   "explanation": "Setting `delta.deletedFileRetentionDuration=0` causes VACUUM to immediately delete old data files after purging records. Once files are physically deleted, time travel cannot access those versions because the underlying data no longer exists. This is an intentional trade-off: compliance with data retention regulations requires sacrificing historical query capability.",
+   "optExpl": {
+    "A": "Incorrect: Time travel depends on file availability; VACUUM with zero retention physically removes the files needed for time travel.",
+    "B": "Incorrect: You can set retention to 0; Delta does not enforce a minimum for VACUUM retention duration.",
+    "C": "Correct: VACUUM with zero retention immediately deletes files; time travel becomes impossible for those deleted records.",
+    "D": "Incorrect: Time travel does not work after files are deleted; the entire version history for purged data is gone."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/delta-vacuum"
+   ]
+  },
+  {
+   "id": 54,
+   "domain": "Data Security and Compliance",
+   "topic": "Secrets handling (dbutils.secrets.get redaction, secret scope ACLs)",
+   "stem": "A developer writes a notebook that reads a database password from a secret scope using `dbutils.secrets.get(scope='prod-secrets', key='db_password')`. The developer then prints the value to the cell output for debugging purposes. Is the password value automatically redacted in the notebook UI cell output, system logs, and audit trails?",
+   "code": {
+    "lang": "python",
+    "src": "password = dbutils.secrets.get(scope='prod-secrets', key='db_password')\nprint(f\"Connecting to database with password: {password}\")\ndisplay(password)"
+   },
+   "options": {
+    "A": "Yes, Databricks automatically redacts secret values everywhere: in UI output, system logs, and audit trails.",
+    "B": "Only if the variable name contains 'secret' or 'password'; otherwise, values are displayed as plaintext.",
+    "C": "No, secret values are not automatically redacted; the developer must manually avoid printing them.",
+    "D": "System logs and audit trails redact secrets, but the notebook cell output displays the plaintext value."
+   },
+   "answer": "A",
+   "explanation": "Databricks redacts secrets in system logs, audit trails, and backend records, but the value returned from `dbutils.secrets.get()` is a plain Python string in the notebook environment. If the developer prints or displays it in a cell, it appears in plaintext in the notebook UI. Redaction of the notebook cell output is the developer's responsibility; naming conventions do not trigger automatic masking.",
+   "optExpl": {
+    "A": "Correct: The returned secret value is not automatically redacted in notebook cell output; it appears as plaintext.",
+    "B": "Incorrect: Variable naming does not control redaction; all returned values are plaintext strings in memory.",
+    "C": "Incorrect: System logs and audit trails do redact secrets; the issue is notebook cell output only.",
+    "D": "Incorrect: Databricks redacts secrets in logs and audit trails, but the notebook cell output is not automatically masked."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/archive/dev-tools/dbutils-library"
+   ]
+  },
+  {
+   "id": 55,
+   "domain": "Data Governance",
+   "topic": "Permission model with no DENY in Unity Catalog",
+   "stem": "In Unity Catalog, you have granted SELECT permission on a schema to a development team group. A specific team member should not have access to one sensitive table in that schema due to a conflict of interest. You cannot use the DENY statement (not available). How do you implement this restriction?",
+   "code": null,
+   "options": {
+    "A": "REVOKE SELECT from the user at the table level; this overrides the schema-level GRANT to the group.",
+    "B": "Apply row-level filters or column masks to the table; these prevent the user from seeing restricted data.",
+    "C": "Use row-level security policies in Unity Catalog; they block specific users from accessing entire tables.",
+    "D": "Remove the user from the development team group, manage group membership separately with different permission levels."
+   },
+   "answer": "A",
+   "explanation": "Unity Catalog implements a hierarchical permission model where REVOKE at a child level (table) overrides GRANT at a parent level (schema). To prevent one user from accessing a specific table, REVOKE SELECT at the table level for that user. This is the intended pattern for implementing fine-grained restrictions without DENY.",
+   "optExpl": {
+    "A": "Correct: REVOKE at the table level for the user overrides the schema-level GRANT to their group.",
+    "B": "Incorrect: Row masks filter visible data within a table; they do not prevent the table from being queried.",
+    "C": "Incorrect: Row-level policies filter row results; they do not prevent table access.",
+    "D": "Incorrect: Revoking at the table level is simpler than managing multiple groups with different permissions."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/admin-privileges"
+   ]
+  },
+  {
+   "id": 56,
+   "domain": "Debugging and Deploying",
+   "topic": "Spark UI identification of straggler / skewed task",
+   "stem": "You observe a query running on a SQL Warehouse that completes in 30 seconds locally but takes 5 minutes in the warehouse. The task graph shows 50 tasks, 49 of which complete in 10 seconds, but one task takes 4.5 minutes. What is the likely cause, and how would you see this in the Spark UI?",
+   "code": null,
+   "options": {
+    "A": "Task skew: in the Spark UI Stages tab, look at the task timeline; uneven task duration bars indicate one task is processing much more data.",
+    "B": "This is normal; SQL Warehouse automatically spills slow tasks to disk, causing latency. Nothing to optimize.",
+    "C": "Network contention: in the Spark UI, check the Executor tab for uneven resource allocation; one executor is overloaded.",
+    "D": "The straggler task is network-bound; nothing can be done in the query; the warehouse needs hardware upgrade."
+   },
+   "answer": "A",
+   "explanation": "Task skew occurs when one or more tasks process much more data than others, causing the overall job to be dominated by the slowest task. In the Spark UI Stages tab, the task timeline visualization shows task duration bars; uneven bars reveal skew. Task skew is not normal and should be optimized. Executor imbalance can contribute but is not the primary cause here. Query optimization through repartitioning or filtering is the first step before considering hardware upgrades.",
+   "optExpl": {
+    "A": "Correct: Task skew is visible in the Spark UI Stages tab task timeline; one task bar is much longer than others.",
+    "B": "Incorrect: Task skew is not normal and should be optimized via partitioning or filtering.",
+    "C": "Incorrect: While executor imbalance can contribute, the root cause here is likely uneven data distribution (skew).",
+    "D": "Incorrect: Query optimization (e.g., repartition, filter) is the first step, not hardware upgrade."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/compute/troubleshooting/debugging-spark-ui"
+   ]
+  },
+  {
+   "id": 57,
+   "domain": "Debugging and Deploying",
+   "topic": "Pipeline update failing after incompatible schema change and full refresh implications",
+   "stem": "You have a Declarative Pipeline with a streaming table `events` reading from Kafka. You deploy a schema update: the source event schema changes (one field is removed, a new field is added). The pipeline update fails. You decide to perform a full refresh. What are the implications?",
+   "code": null,
+   "options": {
+    "A": "Full refresh replays all Kafka messages from the beginning; the table schema updates and processing resumes from offset zero.",
+    "B": "Full refresh clears the table and restarts the pipeline with the new schema; however, it does not replay Kafka messages already consumed.",
+    "C": "Full refresh fails because Kafka offsets are immutable; you must delete the pipeline and recreate it.",
+    "D": "Full refresh reprocesses the last N hours of Kafka data (configurable) with the new schema, minimizing data loss."
+   },
+   "answer": "B",
+   "explanation": "A full refresh in a Declarative Pipeline clears the table state and checkpoint, restarting from the current Kafka offset. The new schema is applied prospectively. Historical messages already consumed are not replayed. This is the intended behavior: you lose in-flight state but not necessarily upstream data. Full refresh does not replay Kafka from the beginning; checkpointing ensures offsets are tracked. Offsets are managed by Kafka, not locked to the pipeline. Full refresh does not selectively reprocess recent Kafka messages.",
+   "optExpl": {
+    "A": "Incorrect: Full refresh does not replay Kafka from the beginning; it clears state and restarts from the current offset.",
+    "B": "Correct: Full refresh clears the table and checkpoint; the new schema applies prospectively from the current offset.",
+    "C": "Incorrect: Full refresh works without recreating the pipeline; offsets are managed by Kafka, not locked.",
+    "D": "Incorrect: Full refresh does not selectively reprocess recent Kafka messages; it starts fresh from the current offset."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/databricks-apps/lakeflow"
+   ]
+  },
+  {
+   "id": 58,
+   "domain": "Debugging and Deploying",
+   "topic": "Git folder branch workflow vs bundle deployment to production",
+   "stem": "Your team has two code deployment strategies: (1) Git folders with branch-based workflows (dev -> staging -> main in Git, synced to Databricks), and (2) Declarative Automation Bundles deployed via `databricks bundle deploy` to workspaces. You need code review, rollback capability, and quick rollforward. Which is more suitable?",
+   "code": null,
+   "options": {
+    "A": "Git folders: branch-based code review in Git is familiar, and rollback is straightforward via Git history revert.",
+    "B": "Bundles: deployment state is versioned and bundled; rollback is a `databricks bundle deploy` of a prior version.",
+    "C": "Git folders are simpler for code review; bundles add complexity without extra safety.",
+    "D": "Choose based on team preference; they provide equivalent operational safety for production deployments."
+   },
+   "answer": "B",
+   "explanation": "Bundles are better for production deployments requiring rollback. Each bundle deployment is self-contained with versioning; you can rollback by deploying a prior bundle version. Git folders require Git history manipulation for rollback, which is more complex. Bundles also support state isolation (dev vs prod via workspace targets). Git branch reviews are familiar but complicate rollback via history rewrites. Bundles provide production-grade rollback and workspace isolation, not just complexity. Bundles offer significantly better operational safety than equivalent Git workflows.",
+   "optExpl": {
+    "A": "Incorrect: While Git review is familiar, rolling back via Git history revert is complex and risks other branches.",
+    "B": "Correct: Bundles version deployments; rollback is a simple re-deployment of a prior version.",
+    "C": "Incorrect: Bundles provide production-grade rollback and workspace isolation; these are not complexity, but safety.",
+    "D": "Incorrect: Bundles offer better operational safety and rollback; this is a architectural choice, not preference."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/jobs-tutorial"
+   ]
+  },
+  {
+   "id": 59,
+   "domain": "Data Modeling",
+   "topic": "Unity Catalog metric view definition (measures, dimensions, source)",
+   "stem": "Your BI team is building a semantic layer for analytics using metric views in Unity Catalog. You define a metric view over a fact table with columns `date`, `user_id`, `revenue`, `units_sold`. The view aggregates revenue and units by date and user. Which role does each column play: measures, dimensions, or source?",
+   "code": {
+    "lang": "sql",
+    "src": "CREATE METRIC my_schema.daily_revenue\nAS (\n  SELECT date, user_id, SUM(revenue) as total_revenue, SUM(units_sold) as total_units\n  FROM my_table\n  GROUP BY date, user_id\n);\nALTER METRIC my_schema.daily_revenue\nSET MEASURES = [total_revenue, total_units]\nSET DIMENSIONS = [date, user_id];"
+   },
+   "options": {
+    "A": "Measures: `total_revenue`, `total_units` (aggregates). Dimensions: `date`, `user_id` (grouping columns). Source: `my_table`.",
+    "B": "Measures: `date`, `user_id` (identifiers). Dimensions: `total_revenue`, `total_units` (aggregates).",
+    "C": "All columns are measures; dimensions are automatically inferred from GROUP BY and do not need explicit definition.",
+    "D": "Metric views treat all columns equally; measures and dimensions are not distinguished in the definition."
+   },
+   "answer": "A",
+   "explanation": "Metric views define semantic roles for columns to enable BI tools to understand aggregation. Measures are aggregated numeric columns (`total_revenue`, `total_units`). Dimensions are grouping/filtering columns (`date`, `user_id`). The source is the underlying table (`my_table`). This structure lets BI tools auto-aggregate and drill down correctly.",
+   "optExpl": {
+    "A": "Correct: Measures are aggregated values; dimensions are grouping columns; source is the base table.",
+    "B": "Incorrect: Identifiers are dimensions; aggregated values are measures; you have reversed them.",
+    "C": "Incorrect: Metric views require explicit definition of measures and dimensions for semantic clarity.",
+    "D": "Incorrect: Metric views explicitly distinguish measures and dimensions for BI consumption."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/uc-semantics/metric-views/create"
+   ]
+  },
+  {
+   "id": 60,
+   "domain": "Data Modeling",
+   "topic": "Star schema served through materialized views with clustering on fact table",
+   "stem": "You have a star schema with a `dim_products` dimension and a `fact_sales` fact table (1 billion rows). You create a materialized view that joins the two and filters by `fact_sales.country = 'US'`. You apply Liquid Clustering to `fact_sales` on `(country, product_id)`. When the materialized view queries the fact table, is the clustering key used to speed up the filter?",
+   "code": null,
+   "options": {
+    "A": "Yes, the clustering on `(country, product_id)` is used during the materialized view query to prune data blocks where `country != 'US'`.",
+    "B": "No, clustering is only used for table scans directly from the fact table; materialized views bypass clustering optimization.",
+    "C": "Yes, but only if the materialized view explicitly references the clustering columns in the SELECT list.",
+    "D": "No, clustering only helps with range queries (`WHERE col BETWEEN`); equality filters like `country='US'` are not optimized by clustering."
+   },
+   "answer": "A",
+   "explanation": "Liquid Clustering applies to all queries on the table, including those from materialized views. When the materialized view filters `country='US'`, Databricks uses the clustering on `country` to prune data blocks, avoiding a full table scan. Clustering is not limited to direct table scans; it applies to all queries. Clustering columns must appear in the WHERE clause for filtering, not in SELECT. Clustering optimizes equality filters and range queries; it is perfect for this scenario.",
+   "optExpl": {
+    "A": "Correct: Liquid Clustering on `country` enables block pruning for the materialized view filter, speeding up the query.",
+    "B": "Incorrect: Clustering applies to all queries on the table, including materialized views.",
+    "C": "Incorrect: Clustering columns must appear in the WHERE clause, not SELECT; they optimize filters, not projections.",
+    "D": "Incorrect: Clustering optimizes equality filters and range queries; `country='US'` is a perfect use case."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/tables/clustering"
+   ]
+  }
+ ]
+}

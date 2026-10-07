@@ -1,0 +1,109 @@
+{
+  "audit": [
+    {
+      "id": 31,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/databricks-connect/cluster-config",
+      "evidence": "Databricks Connect searches for configuration properties in the following order, and uses the first configuration it finds"
+    },
+    {
+      "id": 32,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/concepts/streaming-tables",
+      "evidence": "Joins in streaming tables do not recompute when dimensions change."
+    },
+    {
+      "id": 33,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/structured-streaming/triggers",
+      "evidence": "The AvailableNow trigger option consumes all available records as an incremental batch with the ability to configure batch size"
+    },
+    {
+      "id": 34,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/jobs/file-arrival-triggers",
+      "evidence": "File arrival triggers monitor S3 for new files, trigger ingestion automatically, and handle schema inference."
+    },
+    {
+      "id": 35,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-engineering/procedural-vs-declarative",
+      "evidence": "Triggered mode isolates each run, enabling simple retry logic and predictable failure handling via external scheduling."
+    },
+    {
+      "id": 36,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-engineering/procedural-vs-declarative",
+      "evidence": "Temporary views are session-scoped and dropped at session end; each pipeline trigger starts a fresh session without the view."
+    },
+    {
+      "id": 37,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/job-parameters",
+      "evidence": "processing_date default: '{{job.start_time.iso_date}}'"
+    },
+    {
+      "id": 38,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/delta-copy-into",
+      "evidence": "Files in the source location that have already been loaded are skipped. This is true even if the files have been modified since they were loaded."
+    },
+    {
+      "id": 39,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/delta/iceberg-reads",
+      "evidence": "automatically generates Iceberg metadata asynchronously alongside the Delta Lake metadata, without rewriting the Parquet data files"
+    },
+    {
+      "id": 40,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview",
+      "evidence": "Enable logical replication on PostgreSQL by setting wal_level=logical in postgresql.conf and creating a replication slot."
+    },
+    {
+      "id": 41,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-window-functions",
+      "evidence": "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW creates a sliding window that includes all rows from the beginning of the partition up to and including the current row."
+    },
+    {
+      "id": 42,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/delta-merge-into",
+      "evidence": "Delete all target rows that have no matches in the source table based on the merge_condition."
+    },
+    {
+      "id": 43,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_extract",
+      "evidence": "ai_extract function extracts structured data from text and documents according to a schema you provide."
+    },
+    {
+      "id": 44,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/expectation-patterns",
+      "evidence": "expect_all_or_drop does not have an auto_quarantine flag; use separate streaming table with inverse WHERE clause to capture failing rows."
+    },
+    {
+      "id": 45,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/system-tables/serverless-billing",
+      "evidence": "query the billable usage system table (system.billing.usage), which includes user and workload attributes related to serverless compute costs."
+    }
+  ]
+}

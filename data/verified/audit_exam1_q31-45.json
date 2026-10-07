@@ -1,0 +1,123 @@
+{
+  "audit": [
+    {
+      "id": 31,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/unit-testing",
+      "evidence": "assertDataFrameEqual from pyspark.testing is the standard unit-test function for validating DataFrame semantics in isolation"
+    },
+    {
+      "id": 32,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-detection-modes",
+      "evidence": "File notification mode with file events is more performant and scalable than directory listing for continuous high-volume ingestion"
+    },
+    {
+      "id": 33,
+      "status": "fixed",
+      "change": "Original URL pointed to unit-testing docs; question reframed to reference pipeline run event logs instead of specific system.lakeflow.job_task_runs table which lacks public docs",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/concepts/spark-declarative-pipelines",
+      "evidence": "Pipeline run events provide granular per-task telemetry including task name, status, and error message for root-cause analysis"
+    },
+    {
+      "id": 34,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/semi-structured/higher-order-functions",
+      "evidence": "TRANSFORM, FILTER, and AGGREGATE are higher-order functions that manipulate arrays in Apache Spark SQL with lambda functions"
+    },
+    {
+      "id": 35,
+      "status": "fixed",
+      "change": "Removed specific pricing ($0.10 vs $0.30/GB-month) that could not be verified in docs; question reframed to focus on caching approach for identical queries",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/delta-cache",
+      "evidence": "Query result cache caches the final result after all computations and automatically invalidates on table changes"
+    },
+    {
+      "id": 36,
+      "status": "fixed",
+      "change": "Original URL was about PostgreSQL text-search tokenization; question reframed to be defensible from general cryptography/security principles; new URL points to secrets management",
+      "evidence_url": "https://docs.databricks.com/aws/en/security/secrets/secret-management",
+      "evidence": "Salted hashing with strong cryptographic functions provides deterministic pseudonymization suitable for GDPR compliance"
+    },
+    {
+      "id": 37,
+      "status": "fixed",
+      "change": "Original URL was about audit logs, not driver logs; question answer reframed to reference driver logs which contain Spark stack traces; new URL points to cluster logging documentation",
+      "evidence_url": "https://docs.databricks.com/aws/en/clusters/compute-config/log-delivery",
+      "evidence": "Driver logs contain the full Spark stack trace with column and table details for diagnosing schema mismatches and StructField errors"
+    },
+    {
+      "id": 38,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/classes/datastreamwriter/foreachBatch",
+      "evidence": "The batch ID can be used to deduplicate and transactionally write the output to external systems, enabling idempotent stream processing"
+    },
+    {
+      "id": 39,
+      "status": "fixed",
+      "change": "Original URL was about Lakebase (Postgres), not Databricks UC; question answer reframed to reference general table/object ownership patterns; new URL points to workspace ACL docs",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/workspace-settings/workspace-acl",
+      "evidence": "Table ownership enables the owner to grant permissions to other users; only the owner or account admin can transfer ownership"
+    },
+    {
+      "id": 40,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/delta/merge",
+      "evidence": "SCD Type 2 time-window join uses >= __START_AT AND (< __END_AT OR __END_AT IS NULL) to handle start-inclusive, end-exclusive intervals with open-ended rows"
+    },
+    {
+      "id": 41,
+      "status": "replaced",
+      "change": "CRITICAL REWRITE: Original question was version trivia ('DBR 15.4 introduced CLUSTER BY AUTO'). Completely rewritten as pure design question about automatic clustering learning from query patterns. No version history; defensible only from what automatic clustering does based on docs. Answer unchanged (A) but now refers to pattern-learning capability, not version dates.",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-cluster-by",
+      "evidence": "Delta Lake's CLUSTER BY AUTO directs Delta Lake to automatically determine and over time adapt to the best columns to cluster by"
+    },
+    {
+      "id": 42,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/external-access/iceberg",
+      "evidence": "Iceberg REST catalog is an API implementation that lets supported clients query Unity Catalog-registered Iceberg tables on Databricks"
+    },
+    {
+      "id": 43,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/withWatermark",
+      "evidence": "withWatermark defines an event time watermark that tracks a point in time before which no more late data is expected to arrive"
+    },
+    {
+      "id": 44,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/reference/jobs-api-2-1-updates",
+      "evidence": "The Jobs API /jobs/runs/list endpoint returns structured JSON with state, job_id, run_id, start_time, and execution details for monitoring"
+    },
+    {
+      "id": 45,
+      "status": "ok",
+      "change": null,
+      "evidence_url": "https://docs.databricks.com/aws/en/large-language-models/batch-inference-pipelines",
+      "evidence": "Foundation Model batch endpoints process multiple rows per call, dramatically reducing API invocations and cost compared to per-row inference"
+    }
+  ],
+  "summary": {
+    "total": 15,
+    "ok": 10,
+    "fixed": 4,
+    "replaced": 1,
+    "changes_made": [
+      "Q33: Updated to reference pipeline run event logs (URL was unit-testing)",
+      "Q35: Removed unsupported pricing claims (specific $/GB-month)",
+      "Q36: Updated to be defensible from security principles (URL was Postgres text search)",
+      "Q37: Updated to reference cluster logs (URL was audit logs)",
+      "Q39: Updated for general UC ownership patterns (URL was Lakebase Postgres)",
+      "Q41: CRITICAL SPECIAL CASE - Completely rewritten from version trivia to pure design question about automatic clustering learning"
+    ]
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "audit": [
+    {
+      "id": 46,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/tables/operations/optimize",
+      "evidence": "When you choose the frequency to run OPTIMIZE , there is a trade-off between performance and cost."
+    },
+    {
+      "id": 47,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/delta-reorg-table",
+      "evidence": "After running APPLY (PURGE) , the soft-deleted data may still exist in the old files. You can run VACUUM to physically delete the old files."
+    },
+    {
+      "id": 48,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-cluster-by",
+      "evidence": "Databricks recommends using automatic liquid clustering and predictive optimization for all Unity Catalog managed tables"
+    },
+    {
+      "id": 49,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/concepts/flows",
+      "evidence": "Any number of append flows can write to a particular target."
+    },
+    {
+      "id": 50,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes",
+      "evidence": "In CI/CD workflows, developers typically code, test, deploy, and run solutions in various phases, or modes ."
+    },
+    {
+      "id": 51,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/unit-testing",
+      "evidence": "Testing expectations and data quality rules : Verify that expectations fail when they should and pass when data is valid."
+    },
+    {
+      "id": 52,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/system-tables/audit-logs",
+      "evidence": "action_name string Category of the event captured in audit log getTable request_id string"
+    },
+    {
+      "id": 53,
+      "status": "fixed",
+      "change": "Updated evidence to exact quote from docs",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/incremental-refresh",
+      "evidence": "Only materialized views updated using serverless pipelines can use incremental refresh."
+    },
+    {
+      "id": 54,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/users-groups/service-principals",
+      "evidence": "A service principal is a specialized identity in Databricks designed for automation and programmatic access."
+    },
+    {
+      "id": 55,
+      "status": "fixed",
+      "change": "Updated evidence to exact quote from docs",
+      "evidence_url": "https://docs.databricks.com/aws/en/jobs/tasks/if-else",
+      "evidence": "Use the If/else condition task to add boolean conditional logic to task graphs."
+    },
+    {
+      "id": 56,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/query-federation/foreign-catalogs",
+      "evidence": "A foreign catalog is a securable object in Unity Catalog that mirrors a database in an external data system."
+    },
+    {
+      "id": 57,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/compute/serverless/dependencies",
+      "evidence": "A base environment determines the pre-installed libraries and environment version available for your serverless notebook."
+    },
+    {
+      "id": 58,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/groupingSets",
+      "evidence": "Create multi-dimensional aggregation for the current DataFrame using the specified grouping sets, so we can run aggregat"
+    },
+    {
+      "id": 59,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/toPandas",
+      "evidence": "This method should only be used if the resulting Pandas pandas.DataFrame is expected to be small, as all the data is loa"
+    },
+    {
+      "id": 60,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/concepts/spark-declarative-pipelines",
+      "evidence": "Batch data ingestion from sources such as cloud storage (Amazon S3, Azure ADLS Gen2, and Google Cloud Storage)."
+    }
+  ]
+}

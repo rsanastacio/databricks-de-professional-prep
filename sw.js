@@ -1,4 +1,4 @@
-const CACHE = "practice-exams-53765763aa";
+const CACHE = "practice-exams-c1a3baf796";
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

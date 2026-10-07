@@ -1,0 +1,374 @@
+{
+ "questions": [
+  {
+   "id": 16,
+   "domain": "Monitoring and Alerting",
+   "topic": "Pipeline event log for expectation metrics",
+   "stem": "Your order processing Lakeflow pipeline has an EXPECT clause that validates `order_total > 0` for data quality. Your operations team wants a daily dashboard showing how many orders violated this expectation (trend analysis for anomalies). Your SLA requires detecting quality drops within 1 hour. You need to query system tables to extract expectation violation counts, grouped by day. Which system table and query pattern retrieves this metric?",
+   "code": null,
+   "options": {
+    "A": "Query `system.pipelines.event_log` filtered to `event_type='expectation'` and `expectation_name='order_total > 0'`; group by day and count.",
+    "B": "Query `system.tables.table_lineage` to find tables depending on the expectation; count rows in the quarantine table by day.",
+    "C": "Use `SHOW METRICS` on the streaming table to get expectation summaries from `system.metrics.expectations` by date.",
+    "D": "Query the Delta transaction log (`_delta_log`) of the pipeline's storage location; parse event records for expectation failures."
+   },
+   "answer": "A",
+   "explanation": "Lakeflow pipelines record events in system.pipelines.event_log. Expectation failures are logged with event_type='expectation'. Querying and grouping by day provides the metric. System table lineage and Delta transaction logs are not suitable for extracting structured expectation metrics.",
+   "optExpl": {
+    "A": "Correct: system.pipelines.event_log has expectation events; group by date to track.",
+    "B": "Incorrect: Lineage doesn't track expectation metrics directly.",
+    "C": "Incorrect: SHOW METRICS is not standard; system.pipelines is the right source.",
+    "D": "Incorrect: Parsing Delta transaction logs is unsupported and fragile."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/materialization"
+   ]
+  },
+  {
+   "id": 17,
+   "domain": "Monitoring and Alerting",
+   "topic": "Alerting on data-quality condition",
+   "stem": "Your master data team maintains a `customers` table that should have exactly one record per customer ID (unique constraint). Lately, data quality issues have introduced duplicate customer IDs. Your team wants a Databricks SQL alert that fires if duplicate count exceeds 100 on any day, notifying the team via email to investigate source data. You need the alert to compare a metric against a threshold. What configuration correctly implements this alert?",
+   "code": null,
+   "options": {
+    "A": "Use `MONITOR` command on `customers` to set anomaly detection; configure duplicate rate threshold.",
+    "B": "Write a UDF checking for duplicates; alert triggers if UDF returns true during query execution.",
+    "C": "Create a query returning a single row with duplicate count; create an alert that triggers if result > 100.",
+    "D": "Create a query grouping by `customer_id` and counting; alert triggers if any group has count > 1."
+   },
+   "answer": "C",
+   "explanation": "Databricks SQL alerts compare a single aggregated query result against a threshold. A query returning the count of duplicates can be monitored; if exceeding 100, the alert fires. Row-level details or multiple rows are not suitable for threshold comparison.",
+   "optExpl": {
+    "A": "Incorrect: MONITOR is for profiling, not duplicate detection.",
+    "B": "Incorrect: UDFs don't directly trigger SQL alerts.",
+    "C": "Correct: Single-value query result is compared against threshold to trigger alert.",
+    "D": "Incorrect: Multiple-row results are not directly comparable to thresholds."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/jobs/tasks/alert"
+   ]
+  },
+  {
+   "id": 18,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Deletion vectors for frequent small MERGEs",
+   "stem": "Your fraud detection system performs incremental reconciliation on a `transactions` table (2M rows). The system runs 100 MERGE operations daily, each updating ~1000 rows with correction flags. After 30 days of these small updates, you observe table fragmentation: 3000 small files, slow queries (5x slower than baseline). You enable deletion vectors (DVs) at the table level. How do DVs help optimize this workload?",
+   "code": null,
+   "options": {
+    "A": "DVs pre-compute which files to rewrite; MERGE only rewrites files marked in the vector.",
+    "B": "DVs automatically partition the table to avoid small-file issues.",
+    "C": "DVs store delete markers instead of rewriting files; they reduce fragmentation and speed up MERGE. Queries apply DV filters transparently.",
+    "D": "DVs compress the transaction log, reducing metadata overhead and speeding up MERGE/planning."
+   },
+   "answer": "C",
+   "explanation": "Deletion vectors store delete markers (bit vectors) instead of rewriting files during MERGE, avoiding small-file fragmentation and speeding up both MERGE and queries. Queries transparently apply DV filters. DVs address fragmentation indirectly by eliminating the need for constant rewriting.",
+   "optExpl": {
+    "A": "Incorrect: DVs mark deletes; they don't control which files rewrite.",
+    "B": "Incorrect: DVs and partitioning serve different purposes.",
+    "C": "Correct: DVs store markers, avoid rewrites, reduce fragmentation.",
+    "D": "Incorrect: DVs are not about log compression; they address file fragmentation."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/tables/features/deletion-vectors",
+    "https://docs.databricks.com/aws/en/admin/workspace-settings/deletion-vectors"
+   ]
+  },
+  {
+   "id": 19,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Liquid Clustering vs partitioning",
+   "stem": "Your analytics platform has a `user_events` table (500 GB, 10M unique users, 1B rows) tracking user behavior. Analysts query different user subsets daily (no predictable pattern). Partitioning by `user_id` would create 10M partitions, causing severe metadata overhead and slow catalog operations. Most queries filter on `user_id` for efficiency. Your team wants sub-second query latency without managing explicit partitions. Which clustering approach minimizes overhead while preserving performance?",
+   "code": null,
+   "options": {
+    "A": "Partition by `user_id`; 10M partitions is high but acceptable for predictable queries.",
+    "B": "Use Liquid Clustering on `user_id`; it organizes data at block level without explicit partitions, reducing overhead.",
+    "C": "Use partitioning on hash of `user_id` (modulo 1000); this reduces partition count and provides similar speedup.",
+    "D": "High-cardinality filters require secondary indexes, which Databricks doesn't support; accept full-table scans."
+   },
+   "answer": "B",
+   "explanation": "Liquid Clustering is designed for high-cardinality columns. It organizes data at block level without explicit partitions, avoiding 10M partition overhead. Queries on high-cardinality keys scan fewer blocks efficiently. Traditional partitioning causes unacceptable metadata overhead; hash partitioning still creates many partitions per query.",
+   "optExpl": {
+    "A": "Incorrect: 10M partitions cause unacceptable metadata overhead.",
+    "B": "Correct: Liquid Clustering handles high-cardinality efficiently without partition explosion.",
+    "C": "Incorrect: Hash partitioning doesn't scale; still many partitions per query.",
+    "D": "Incorrect: Liquid Clustering is designed exactly for this scenario."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/delta/best-practices"
+   ]
+  },
+  {
+   "id": 20,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Predictive Optimization on UC managed tables",
+   "stem": "Your data warehouse team manages 200+ tables in Unity Catalog (totaling 50 TB). Query SLAs require sub-10-second latency for 95% of user queries. Your team lacks resources to manually profile each table and recommend indexes/clustering. Your CFO wants to reduce compute costs by 20%+ without sacrificing performance. You enable Predictive Optimization on your UC catalog. What automatic actions does it perform, and what is the cost model for this optimization?",
+   "code": null,
+   "options": {
+    "A": "Automatically identifies tables that would benefit from clustering; you review and apply recommendations. It's free.",
+    "B": "Automatically applies clustering/ZORDER optimizations to all tables without review. Free on UC.",
+    "C": "Automatically optimizes tables in the background (clustering, ZORDER, etc.); background compute is billable.",
+    "D": "Available only on classic workspaces, not UC."
+   },
+   "answer": "C",
+   "explanation": "Predictive Optimization on UC tables automatically runs optimization tasks in the background (clustering, VACUUM, ANALYZE). However, this background compute is billable through serverless SKUs. The automation eliminates manual optimization recommendations and review.",
+   "optExpl": {
+    "A": "Incorrect: Automatic (not manual review); and it's not free.",
+    "B": "Incorrect: Automatic is correct, but background compute is billable.",
+    "C": "Correct: Auto-optimization on UC tables; background compute is billable.",
+    "D": "Incorrect: Predictive Optimization works on UC managed tables."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/optimizations/predictive-optimization",
+    "https://docs.databricks.com/aws/en/admin/system-tables/predictive-optimization"
+   ]
+  },
+  {
+   "id": 21,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Query profile showing skewed join",
+   "stem": "A 1 GB `users` table joined with 500 GB `events` table on `user_id` takes 5 minutes. Spark UI shows high-skew condition: a few partitions process 100x more data than others. Join is BroadcastHashJoin but events is too large to broadcast. What should you investigate first?",
+   "code": null,
+   "options": {
+    "A": "Increase cluster memory; BroadcastHashJoin needs more memory to fit the broadcast.",
+    "B": "Add a column filter on events (e.g., `WHERE event_date >= CURRENT_DATE - 30`) to reduce the dataset.",
+    "C": "Force SortMergeJoin instead; BroadcastHashJoin is inappropriate for large tables.",
+    "D": "Check if `user_id` has null values or skew; uneven join-key distribution causes imbalance."
+   },
+   "answer": "D",
+   "explanation": "High variance in task duration (2s to 120s) combined with spilling on some tasks indicates data skew. When few join-key values appear millions of times, all rows for those keys land in one partition. Skewed tasks receive more data, run out of memory, spill. Investigating join-key distribution (nulls, hot keys) is the first diagnostic step.",
+   "optExpl": {
+    "A": "Incorrect: Memory shortage affects all tasks uniformly.",
+    "B": "Incorrect: Network issues would affect all tasks similarly.",
+    "C": "Incorrect: GC pauses don't cause consistent spilling on skewed tasks.",
+    "D": "Correct: Skew causes some tasks to receive more data and spill."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/",
+    "https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/long-spark-stage"
+   ]
+  },
+  {
+   "id": 22,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Change Data Feed with table_changes",
+   "stem": "Your master data team maintains a `customer_master` table (1 GB, 10M records) with daily updates. Six downstream systems (reporting, analytics, CRM, billing, audit, ML) must stay synchronized with changes. Currently, you export the entire table daily—wasting 99% bandwidth for 1% change. You enable Change Data Feed (CDF) to stream only inserts, updates, and deletes. Your integration layer needs to query changes incrementally since the last sync point. Which SQL function and approach correctly retrieves only incremental changes?",
+   "code": null,
+   "options": {
+    "A": "Use `SELECT * FROM table_changes('customer_master', 0)` to get all changes since version 0.",
+    "B": "Use `SELECT * FROM table_changes('customer_master', version_number)` where version_number is the last sync version; CDF returns inserts, updates, deletes.",
+    "C": "Enable CDF, then query `SELECT * FROM customer_master WHERE _change_type IN ('insert', 'update', 'delete')`.",
+    "D": "Use Lakeflow Declarative Pipelines `FROM table_changes()` to subscribe; manual SQL queries don't expose CDF."
+   },
+   "answer": "B",
+   "explanation": "The table_changes() function is the standard CDC access pattern. Pass the last sync version and it returns all changes (inserts, updates, deletes with _change_type) since that version. Replaying entire history is inefficient. CDF requires table_changes() syntax rather than WHERE filtering. Legacy approaches add unnecessary complexity.",
+   "optExpl": {
+    "A": "Incorrect: Version 0 replays entire history; use the last sync version.",
+    "B": "Correct: table_changes(table_name, version) returns incremental changes.",
+    "C": "Incorrect: CDF requires table_changes(), not just WHERE filtering.",
+    "D": "Incorrect: SQL queries can use table_changes() directly."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/tables/features/change-data-feed",
+    "https://docs.databricks.com/aws/en/oltp/projects/lakebase-cdf"
+   ]
+  },
+  {
+   "id": 23,
+   "domain": "Data Security and Compliance",
+   "topic": "ABAC policy with governed tag",
+   "stem": "Your compliance team requires that the `phone_number` column in the `customers` table be masked for all non-Finance users (data minimization principle). You want to implement this via Attribute-Based Access Control (ABAC) using Unity Catalog's column masking with governed tags to identify sensitive columns and mask them based on user department. Which configuration correctly implements this masking policy?",
+   "code": null,
+   "options": {
+    "A": "Use a row filter instead; apply `is_account_group_member('Finance_group')` to control record access.",
+    "B": "Create dynamic column mask in table definition; tag the table with `department=Finance` for automatic filtering.",
+    "C": "Assign the `pii` governed tag to the `phone_number` column; create a masking UDF; apply ABAC policy matching column tag and checking `is_account_group_member('Finance')`.",
+    "D": "Apply `ALTER COLUMN phone_number SET TAGS ('pii' = 'sensitive')`; create masking UDF `mask_phone(val STRING) RETURNS STRING`; apply policy with `HAS_TAG_VALUE('pii', 'sensitive')` in the MATCH COLUMNS clause."
+   },
+   "answer": "D",
+   "explanation": "The correct ABAC pattern: (1) Tag columns directly via ALTER COLUMN SET TAGS (column tags don't inherit from parent tables); (2) Create mask UDF that receives column value and returns masked output; (3) Create policy with COLUMN MASK clause matching tagged columns and checking group membership. Row filters restrict records, not fields. Tags on columns (not users) determine what gets masked.",
+   "optExpl": {
+    "A": "Incorrect: Row filters restrict records; column masks restrict field-level access.",
+    "B": "Incorrect: ABAC doesn't auto-mask without explicit policy; masking is manual.",
+    "C": "Incorrect: Uses old identity attribute pattern; doesn't specify the policy structure.",
+    "D": "Correct: Tags applied to columns via ALTER COLUMN; UDF receives value; policy matches column tags."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/core-concepts",
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/tutorial"
+   ]
+  },
+  {
+   "id": 24,
+   "domain": "Data Security and Compliance",
+   "topic": "Row filter function with is_account_group_member",
+   "stem": "Your finance team maintains a `transactions` table with both public (marketing spend, board-approved budgets) and confidential (executive compensation, M&A) rows marked by `department` column. Finance group members must see all rows (for audit purposes). All other employees see only `department='Public'` transactions. You implement row-level security via Unity Catalog row filter functions. Which row filter function definition correctly enforces this access control policy?",
+   "code": null,
+   "options": {
+    "A": "CREATE FUNCTION filter_transactions() RETURN is_account_group_member('Finance') OR department='Public'",
+    "B": "CREATE FUNCTION filter_transactions() RETURNS BOOLEAN RETURN IF(is_account_group_member('Finance'), TRUE, department='Public')",
+    "C": "CREATE ROW FILTER filter_transactions ON transactions USING (is_account_group_member('Finance') OR department='Public')",
+    "D": "CREATE ROW FILTER ON transactions WHERE is_account_group_member('Finance') OR department='Public'"
+   },
+   "answer": "B",
+   "explanation": "Row filter functions must return BOOLEAN. The IF statement correctly implements: if user is in Finance group, return TRUE (show all rows); else return the condition (department='Public'). Missing RETURN keyword or wrong clause structure prevents compilation. Non-standard syntax like CREATE ROW FILTER ON...WHERE is invalid.",
+   "optExpl": {
+    "A": "Incorrect: Missing RETURNS BOOLEAN and RETURN keyword.",
+    "B": "Correct: Function returns BOOLEAN; IF logic correct.",
+    "C": "Incorrect: CREATE ROW FILTER syntax is wrong; use CREATE FUNCTION.",
+    "D": "Incorrect: CREATE ROW FILTER ON ... WHERE syntax is not valid."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-row-filter"
+   ]
+  },
+  {
+   "id": 25,
+   "domain": "Data Governance",
+   "topic": "UC privilege inheritance",
+   "stem": "Your data governance team is setting up Unity Catalog privileges for a new data analyst. You grant the analyst `USE CATALOG` on your main catalog but deliberately do not grant any `USE SCHEMA` or `SELECT` privileges. The analyst attempts to run `SELECT * FROM main_catalog.sales_schema.orders`. Based on Unity Catalog's privilege model, what occurs?",
+   "code": null,
+   "options": {
+    "A": "The user can SELECT the table; `USE CATALOG` implies `USE SCHEMA` on all schemas.",
+    "B": "The user cannot SELECT; they need explicit `USE SCHEMA` and `SELECT` on the table.",
+    "C": "The user can list the catalog but not access schemas; they need `USE SCHEMA` AND `SELECT` to access tables.",
+    "D": "The user can SELECT only if they have `SELECT` privilege at catalog level (inherited)."
+   },
+   "answer": "C",
+   "explanation": "Unity Catalog privileges don't automatically inherit. USE CATALOG allows listing but not schema access. To SELECT, user needs explicit USE SCHEMA on the specific schema AND SELECT on the table. Each privilege level requires independent authorization.",
+   "optExpl": {
+    "A": "Incorrect: USE CATALOG does not imply USE SCHEMA; no automatic inheritance.",
+    "B": "Incorrect: While technically true, this option is less precise than the distinction in the correct answer.",
+    "C": "Correct: USE SCHEMA and SELECT needed; USE CATALOG alone doesn't grant schema access.",
+    "D": "Incorrect: SELECT at catalog level is not inherited."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/"
+   ]
+  },
+  {
+   "id": 26,
+   "domain": "Data Governance",
+   "topic": "Comments and tags for discoverability",
+   "stem": "Your data catalog team is improving table discoverability for 2000 tables across sales, marketing, and engineering domains. You add a human-readable comment explaining each table's purpose, transformations, and SLA. You also tag tables with governed tag `data_domain=sales` (or marketing, engineering). Your goal is to help analysts self-serve data discovery without requiring documentation crawling or team queries. What benefits do comments and tags provide in this context?",
+   "code": null,
+   "options": {
+    "A": "Comments appear in Databricks Search and catalog browser; tags enable filtering in UI and are queryable in system tables.",
+    "B": "Comments and tags filter search results equally; no impact on data access.",
+    "C": "Comments are indexed by Genie AI for natural-language search; tags are for access control only.",
+    "D": "Comments appear in query results; tags organize tables in the workspace UI."
+   },
+   "answer": "A",
+   "explanation": "Comments are searchable metadata appearing in Databricks Search and catalog browser. Governed tags enable discovery filtering in the UI and are queryable in system tables. Together they improve analyst self-service discoverability without manual documentation crawling.",
+   "optExpl": {
+    "A": "Correct: Comments appear in search/browser; tags enable discovery filtering.",
+    "B": "Incorrect: Both provide descriptive metadata; tags enable filtering.",
+    "C": "Incorrect: Comments are primarily metadata, not AI-powered search.",
+    "D": "Incorrect: Comments don't appear in query results."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/comments/",
+    "https://docs.databricks.com/aws/en/admin/governed-tags/"
+   ]
+  },
+  {
+   "id": 27,
+   "domain": "Debugging and Deploying",
+   "topic": "Repairing failed job run",
+   "stem": "Your production ETL job runs nightly at 2 AM and processes customer transactions. Tonight's run fails halfway through due to a transient network timeout (downstream API issue). You diagnose and fix the root cause. You want to re-run the failed job with the exact same input parameters, job config, and cluster settings for backfill without affecting tomorrow's scheduled run. You need the most straightforward repair mechanism. Which approach is correct?",
+   "code": null,
+   "options": {
+    "A": "Use `databricks jobs update-job-run --run-id <ID> --status RUNNING` to resume from failure.",
+    "B": "Use CLI: `databricks jobs run-now --job-id <ID> --jar-params <params>` to replay.",
+    "C": "In the Databricks UI, click the failed run, then click 'Repair Run' to re-execute with the same parameters.",
+    "D": "Manually re-run the job via the Jobs UI; the UI auto-populates the last-run parameters."
+   },
+   "answer": "C",
+   "explanation": "Databricks provides 'Repair Run' feature in Jobs UI that re-executes a failed run with the exact same parameters and config. This is the standard backfill pattern for recovering from transient failures.",
+   "optExpl": {
+    "A": "Incorrect: Resuming from failure is not typically supported.",
+    "B": "Incorrect: CLI syntax is job-type-specific; not the standard repair pattern.",
+    "C": "Correct: Repair Run re-executes with original parameters.",
+    "D": "Incorrect: Requires manual entry; not reproducible."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/jobs/run-now"
+   ]
+  },
+  {
+   "id": 28,
+   "domain": "Debugging and Deploying",
+   "topic": "Bundle targets and deploy",
+   "stem": "Your DevOps team maintains a Declarative Automation Bundle (DAB) with two targets: `dev` (2 cluster cores, 5-minute job timeout) and `prod` (8 cores, 30-minute timeout) to balance costs and performance. After testing in dev, you need to deploy the bundle to production with prod's configuration. You're using the `databricks bundle` CLI tool. Which command correctly deploys using the prod target's variables?",
+   "code": {
+    "lang": "yaml",
+    "src": "targets:\n  dev:\n    variables:\n      cluster_cores: 2\n      job_timeout: 5\n  prod:\n    variables:\n      cluster_cores: 8\n      job_timeout: 30"
+   },
+   "options": {
+    "A": "`databricks bundle deploy -t prod` will deploy using the prod target's variables.",
+    "B": "`databricks bundle deploy --target prod` is required; short form `-t` is not valid.",
+    "C": "`databricks bundle deploy prod` (positional argument) will deploy to prod.",
+    "D": "`databricks bundle deploy` with `export DATABRICKS_TARGET=prod` env var."
+   },
+   "answer": "A",
+   "explanation": "The databricks bundle deploy -t prod command correctly deploys using the prod target's variables. The -t flag is the valid short form for specifying the target. Environment variables and positional syntax are not standard; the full form is --target.",
+   "optExpl": {
+    "A": "Correct: -t flag specifies the target for deployment.",
+    "B": "Incorrect: -t is the valid short form for --target.",
+    "C": "Incorrect: Positional syntax is not valid for bundle deploy.",
+    "D": "Incorrect: Environment variable is not standard."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes"
+   ]
+  },
+  {
+   "id": 29,
+   "domain": "Debugging and Deploying",
+   "topic": "Spark UI diagnosis of spill/skew",
+   "stem": "Your data platform team runs a complex aggregation job on 500 GB of event data. Spark UI shows Stage 5 (a shuffle/join stage) with 200 tasks. Task duration varies wildly: most complete in 2–5 seconds, but a few take 120+ seconds. Peak memory usage on executor nodes hits the limit, and task logs show spill warnings. Your team needs to diagnose whether this is a cluster-capacity issue (too little memory) or a data-distribution problem. What is the most likely root cause?",
+   "code": null,
+   "options": {
+    "A": "Insufficient cluster memory: all tasks are spilling; add more nodes.",
+    "B": "Network congestion during shuffle; variance reflects network latency.",
+    "C": "Executor GC pauses; long tasks stalled by garbage collection.",
+    "D": "Partition skew: a few tasks received most data; they spilled due to memory pressure."
+   },
+   "answer": "D",
+   "explanation": "Task duration variance (2s to 120s) plus spilling on subset of tasks indicates data skew. Skewed tasks with more data run out of memory and spill. Cluster-wide memory shortage would cause uniform slowness; network issues would affect all tasks similarly.",
+   "optExpl": {
+    "A": "Incorrect: Uniform slowness suggests cluster-wide memory issues.",
+    "B": "Incorrect: Network issues would affect all tasks similarly.",
+    "C": "Incorrect: GC pauses aren't directly correlated with task skew and spill.",
+    "D": "Correct: Skew causes some tasks to receive more data, spill."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/long-spark-stage"
+   ]
+  },
+  {
+   "id": 30,
+   "domain": "Data Modeling",
+   "topic": "Dimensional model with MV + metric view",
+   "stem": "Your analytics team is building a dimensional ecommerce data model for real-time BI dashboards. The raw `fact_orders` table (1B rows, updated every 5 minutes) joins with dimension tables (products, categories, dates). Analysts need pre-aggregated metrics (revenue by category per month, top SKUs, customer lifetime value) with sub-second query latency, governed measures, and versioning for audit. Your team wants to separate the data modeling layer (performance optimization) from the semantic/governance layer. How do you structure this architecture?",
+   "code": null,
+   "options": {
+    "A": "Create MVs for metric aggregations (e.g., `mv_revenue_by_category`); create a UC metric view on top that references MVs and defines governed measures.",
+    "B": "Create a single fact table with all dimensions denormalized; define metric view on top for aggregations.",
+    "C": "Use Lakeflow Declarative Pipelines to pre-compute aggregates; expose as views (not metric views).",
+    "D": "Query fact + dimensions directly in metric view definitions; avoid MVs to reduce storage."
+   },
+   "answer": "A",
+   "explanation": "Standard dimensional model: materialized views pre-aggregate fact table joins with dimensions (performance optimization). UC metric views provide governance and versioned measures on top of aggregates (semantic layer). This separates modeling concerns from governance. Denormalization, pipeline-based pre-computation, and direct querying all violate dimensional model principles or performance requirements.",
+   "optExpl": {
+    "A": "Correct: MVs for aggregates + metric view for governance.",
+    "B": "Incorrect: Denormalization is not dimensional modeling.",
+    "C": "Incorrect: Pipelines and views serve different purposes.",
+    "D": "Incorrect: Direct querying of large fact tables kills performance."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dashboards/manage/data-modeling/local-metric-views",
+    "https://docs.databricks.com/aws/en/ldp/concepts/materialized-views"
+   ]
+  }
+ ]
+}

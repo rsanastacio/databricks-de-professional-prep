@@ -1,0 +1,69 @@
+EXAM2 VERIFICATION SUMMARY — Questions 31-45
+==============================================
+
+SCOPE: 15 questions (IDs 31-45) from exam2_part2.json
+DATE: 2026-10-06
+VERIFIER: Documentation-backed fact-checking per VERIFY_SPEC.md
+
+OUTPUT FILES:
+  ✓ /Users/rodrigo.anastacio/projects/cert-data-engineer-professional-2semanas/publish/data/verified/exam2_q31-45.json
+  ✓ /Users/rodrigo.anastacio/projects/cert-data-engineer-professional-2semanas/publish/data/verified/audit_exam2_q31-45.json
+
+VERIFICATION RESULTS:
+  ✓ 15 ok
+  • 0 fixed
+  • 0 replaced
+  • 0 needs_review
+
+CHANGES MADE:
+  1. Q33 option D: Removed "both triggers" phrase (forbidden per spec)
+     Changed: "Same as Trigger.Once: both triggers process..."
+     To: "Same as Trigger.Once: `Trigger.Once` and `Trigger.AvailableNow()` have identical semantics..."
+  
+  2. Q31, Q39, Q40, Q42, Q43: Removed letter references from explanations
+     Per VERIFY_SPEC, explanations must not reference options by letter.
+     Replaced "Option X..." patterns with direct approach names.
+
+VALIDATION CHECKS:
+  ✓ All refs in allowlist (/Users/rodrigo.anastacio/projects/cert-data-engineer-professional-2semanas/docs_urls.txt)
+  ✓ Exactly one 'Correct:' per optExpl entry
+  ✓ No letter references in explanation/optExpl text
+  ✓ No forbidden phrases ('all of the above', 'none of the above', 'both' as option)
+  ✓ Answer distribution (A: 33%, B: 13%, C: 33%, D: 20%) — reasonably balanced
+  ✓ All questions have valid structure (id, domain, topic, stem, options A-D, answer, explanation, optExpl, refs)
+  ✓ Domain distribution preserved: Developing Code (7), Data Ingestion (3), Data Manipulation (4), Monitoring (1)
+
+KEY DOCUMENTATION VERIFIED:
+  Q31: Databricks Connect provides SparkSession.getActiveSession() after configuration
+  Q32: Stream-static joins are immutable per micro-batch (no retroactive re-join on dimension update)
+  Q33: Trigger.AvailableNow() processes all data on first run, then incremental on subsequent
+  Q34: File arrival triggers available in Lakeflow Connect, monitor S3 automatically
+  Q35: Triggered mode isolates runs for simple failure recovery vs continuous' complexity
+  Q36: Temporary views session-scoped, dropped at session end (each trigger = new session)
+  Q37: {{job.start_time.iso_date}} is correct macro syntax for job parameter
+  Q38: COPY INTO with force=false is idempotent, skips already-loaded files
+  Q39: Delta Uniform generates Iceberg metadata side-by-side for external read access
+  Q40: PostgreSQL CDC requires wal_level=logical and replication slot creation
+  Q41: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW creates running total window
+  Q42: WHEN NOT MATCHED BY SOURCE DELETE removes target rows with no source match
+  Q43: ai_extract for structured data extraction, ai_classify for categorization
+  Q44: expect_all_or_drop has no auto_quarantine; use inverse WHERE clause in separate table
+  Q45: system.billing.usage is authoritative table for serverless cost by user
+
+REFERENCES USED:
+  • https://docs.databricks.com/aws/en/dev-tools/databricks-connect/cluster-config
+  • https://docs.databricks.com/aws/en/ldp/concepts/streaming-tables
+  • https://docs.databricks.com/aws/en/structured-streaming/triggers
+  • https://docs.databricks.com/aws/en/jobs/file-arrival-triggers
+  • https://docs.databricks.com/aws/en/data-engineering/procedural-vs-declarative
+  • https://docs.databricks.com/aws/en/dev-tools/bundles/job-parameters
+  • https://docs.databricks.com/aws/en/sql/language-manual/delta-copy-into
+  • https://docs.databricks.com/aws/en/delta/iceberg-reads
+  • https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview
+  • https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-window-functions
+  • https://docs.databricks.com/aws/en/sql/language-manual/delta-merge-into
+  • https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_extract
+  • https://docs.databricks.com/aws/en/ldp/expectation-patterns
+  • https://docs.databricks.com/aws/en/admin/system-tables/serverless-billing
+
+All 15 questions are evidence-backed and ready for use.

@@ -77,7 +77,12 @@
   td.n { text-align:right; font-variant-numeric:tabular-nums; }
   .hint { color:var(--muted); font-size:13px; }
   .empty { text-align:center; color:var(--muted); padding:60px 20px; }
-  code { background:var(--chip); padding:1px 5px; border-radius:5px; font-size:.92em; }
+  code { background:var(--chip); padding:1px 5px; border-radius:5px; font:.9em/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  pre.code { margin:0 0 12px; padding:12px; background:var(--chip); border:1px solid var(--line); border-radius:8px; overflow-x:auto; }
+  pre.code code { padding:0; background:none; white-space:pre; }
+  .refs { margin-top:8px; font-size:13px; display:flex; flex-direction:column; gap:3px; }
+  .refs a { color:var(--accent); word-break:break-all; }
+  blockquote.ev { margin:8px 0 0; padding:6px 10px; border-left:3px solid var(--muted); font-size:13px; font-style:italic; background:var(--card); border-radius:0 6px 6px 0; }
 </style>
 </head>
 <body>
@@ -126,7 +131,7 @@
   };
   var PASS = 0.70;
   var $ = function(id){ return document.getElementById(id); };
-  var current = LS.get("depro_current") || (DATA ? Object.keys(DATA)[0] : null);
+  var current = LS.get("depro_current"); if(!DATA || !DATA[current]) current = DATA ? Object.keys(DATA)[0] : null;
   var studyMode = LS.get("depro_study"); if(studyMode===null) studyMode = true;
 
   // theme
@@ -172,7 +177,8 @@
     card.id = "q"+q.id;
     var dom = (q.domain||"") + (q.topic ? " — "+q.topic : "");
     var h = '<div><span class="num">'+q.id+'.</span><span class="badge">'+esc(dom)+'</span></div>';
-    h += '<div class="qtext">'+esc(q.text)+'</div>';
+    h += '<div class="qtext">'+fmt(q.stem||q.text)+'</div>';
+    if(q.code && q.code.src) h += '<pre class="code"><code>'+esc(q.code.src)+'</code></pre>';
     ["A","B","C","D"].forEach(function(L){
       if(q.options[L]==null) return;
       var sel = ans[q.id]===L;
@@ -180,15 +186,19 @@
       if(reveal){ if(L===q.answer) cls+=" correct"; else if(sel) cls+=" wrong"; }
       var dis = submitted ? " disabled" : "";
       h += '<label class="'+cls+'"><input type="radio" name="q'+q.id+'" value="'+L+'"'+(sel?" checked":"")+dis+'>'
-         + '<span class="lk">'+L+')</span>'+esc(q.options[L])+'</label>';
-      if(reveal && q.optExpl && q.optExpl[L]) h += '<div class="optnote '+(L===q.answer?"ok":"bad")+'">'+esc(q.optExpl[L])+'</div>';
+         + '<span class="lk">'+L+')</span>'+fmt(q.options[L])+'</label>';
+      if(reveal && q.optExpl && q.optExpl[L]) h += '<div class="optnote '+(L===q.answer?"ok":"bad")+'">'+fmt(q.optExpl[L])+'</div>';
     });
     var chosen = ans[q.id];
     var correct = chosen===q.answer;
     var vtxt = !chosen ? "" : (correct ? "✓ Correct ("+q.answer+")"
                 : "✗ You chose "+chosen+" — correct answer is "+q.answer);
     h += '<div class="verdict '+(correct?"ok":"bad")+'">'+vtxt+'</div>';
-    if(q.explanation) h += '<div class="expl"><b>Why:</b> '+esc(q.explanation)+'</div>';
+    if(q.explanation){
+      var refs = (q.refs||[]).map(function(u){ return '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u)+'</a>'; }).join('');
+      var ev = (q.evidence && q.evidence.quote) ? '<blockquote class="ev">From the docs: “'+esc(q.evidence.quote)+'”</blockquote>' : '';
+      h += '<div class="expl"><b>Why:</b> '+fmt(q.explanation)+ev+(refs ? '<div class="refs"><b>Docs:</b>'+refs+'</div>' : '')+'</div>';
+    }
     card.innerHTML = h;
     wireRadios(card, q);
     return card;
@@ -283,7 +293,8 @@
     else alert("All questions answered ✓");
   };
 
-  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function fmt(s){ return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>"); }
 
   render();
 })();

@@ -72,6 +72,12 @@ TEMPLATE = r"""<!DOCTYPE html>
   .expl{display:none;margin-top:10px;padding:12px;border-left:3px solid var(--accent);
     background:var(--chip);border-radius:0 10px 10px 0;font-size:15px;}
   .rev .expl{display:block;}
+  code{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--chip);padding:1px 5px;border-radius:5px;}
+  pre.code{margin:0 0 14px;padding:12px;background:var(--chip);border:1px solid var(--line);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  pre.code code{padding:0;background:none;white-space:pre;}
+  .refs{margin-top:10px;font-size:13px;display:flex;flex-direction:column;gap:4px;}
+  .refs a{color:var(--accent);word-break:break-all;}
+  blockquote.ev{margin:10px 0 0;padding:8px 10px;border-left:3px solid var(--muted);font-size:13.5px;font-style:italic;color:var(--ink);background:var(--card);border-radius:0 8px 8px 0;}
   nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
     display:flex;gap:10px;padding:10px 12px calc(10px + var(--safe-b));z-index:20;}
   nav button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);
@@ -180,17 +186,22 @@ function renderQ(){
   var box=$("q"); box.className=rev?"rev":"";
   var dom=(q.domain||"")+(q.topic?" — "+q.topic:"");
   var h='<span class="badge">'+esc(dom)+'</span><div class="qnum">Question '+q.id+'</div>';
-  h+='<div class="qtext">'+esc(q.text)+'</div>';
+  h+='<div class="qtext">'+fmt(q.stem||q.text)+'</div>';
+  if(q.code&&q.code.src) h+='<pre class="code"><code>'+esc(q.code.src)+'</code></pre>';
   ["A","B","C","D"].forEach(function(L){
     if(q.options[L]==null)return;
     var sel=a[q.id]===L, cls="opt"+(sel?" sel":"");
     if(rev){if(L===q.answer)cls+=" correct";else if(sel)cls+=" wrong";}
-    h+='<div class="'+cls+'" data-l="'+L+'"><span class="lk">'+L+')</span><span>'+esc(q.options[L])+'</span></div>';
-    if(rev && q.optExpl && q.optExpl[L]) h+='<div class="optnote '+(L===q.answer?"ok":"bad")+'">'+esc(q.optExpl[L])+'</div>';
+    h+='<div class="'+cls+'" data-l="'+L+'"><span class="lk">'+L+')</span><span>'+fmt(q.options[L])+'</span></div>';
+    if(rev && q.optExpl && q.optExpl[L]) h+='<div class="optnote '+(L===q.answer?"ok":"bad")+'">'+fmt(q.optExpl[L])+'</div>';
   });
   var chosen=a[q.id], correct=chosen===q.answer;
   h+='<div class="verdict '+(correct?"ok":"bad")+'">'+(!chosen?"":(correct?"✓ Correct ("+q.answer+")":"✗ You chose "+chosen+" — correct answer is "+q.answer))+'</div>';
-  if(q.explanation)h+='<div class="expl"><b>Why:</b> '+esc(q.explanation)+'</div>';
+  if(q.explanation){
+    var refs=(q.refs||[]).map(function(u){return '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u.replace(/^https:\/\/docs\.databricks\.com\/(aws\/en\/)?/,""))+'</a>';}).join("");
+    var ev=(q.evidence&&q.evidence.quote)?'<blockquote class="ev">From the docs: “'+esc(q.evidence.quote)+'”</blockquote>':'';
+    h+='<div class="expl"><b>Why:</b> '+fmt(q.explanation)+ev+(refs?'<div class="refs"><b>Docs:</b>'+refs+'</div>':'')+'</div>';
+  }
   box.innerHTML=h;
   box.querySelectorAll(".opt").forEach(function(o){
     o.onclick=function(){
@@ -269,7 +280,8 @@ function timer(){
 }
 
 function render(){buildSeg();if(submitted())showResults();else renderQ();timer();}
-function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function fmt(s){return esc(s).replace(/`([^`]+)`/g,"<code>$1</code>");}
 
 idx=LS.g(kI())||0;
 render();

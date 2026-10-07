@@ -1,0 +1,763 @@
+{
+  "questions": [
+    {
+      "id": 31,
+      "domain": "Developing Code",
+      "topic": "Unit testing with assertDataFrameEqual and DataFrame.transform",
+      "stem": "Your team is building a data transformation library to standardize customer data across 50+ sources. The transformation logic must be testable in isolation, with quick feedback during CI/CD. You decide to package each transformation step as a `DataFrame.transform()` call. Which testing approach ensures the transformation is semantically correct without running it on production data, and works with a serverless SQL warehouse context where only Lakeflow SQL tests are available?",
+      "code": {
+        "lang": "python",
+        "src": "from databricks.sdk.sql import sql\nfrom pyspark.testing import assertDataFrameEqual\n\ndef test_normalize_email():\n    df = spark.createDataFrame(\n        [(\"John\", \"JOHN@EXAMPLE.COM\")],\n        [\"name\", \"email\"]\n    )\n    result = df.transform(normalize_email)\n    expected = spark.createDataFrame(\n        [(\"John\", \"john@example.com\")],\n        [\"name\", \"email\"]\n    )\n    assertDataFrameEqual(result, expected)"
+      },
+      "options": {
+        "A": "Write Lakeflow SQL unit tests with `CREATE TEMPORARY TABLE` for inputs and compare outputs using `SELECT COUNT(CASE WHEN ... THEN 1)` to validate row counts and nulls.",
+        "B": "Use PySpark `assertDataFrameEqual` in a local Pytest suite; the transform logic is Python/SQL agnostic and can run on a serverless default compute cluster to validate before CI/CD merge.",
+        "C": "Deploy the transform as a temporary SQL view in a production warehouse and run `SELECT * EXCEPT` to spot differences; manually inspect the output daily.",
+        "D": "Use Databricks Notebooks with interactive runs, save the result to a temporary table, and manually inspect with `DESCRIBE` on each run\u2014no automation needed."
+      },
+      "answer": "B",
+      "explanation": "`assertDataFrameEqual` from `pyspark.testing` is the standard unit-test function for validating DataFrame semantics (schema, rows, values) in isolation, independent of warehouse context. It runs on default compute, integrates with Pytest/CI, and is the exam-standard approach. SQL validation alone misses semantic errors. Manual inspection on production violates safety and governance. Automation is essential for CI gate protection.",
+      "optExpl": {
+        "A": "Incorrect: SQL-based row-count validation misses semantic errors in column transformations; incomplete for transformation unit tests.",
+        "B": "Correct: `assertDataFrameEqual` + Pytest is the testable, automatable, CI-friendly approach for transform validation on default compute.",
+        "C": "Incorrect: Manual inspection on production data violates safety and governance; no programmatic assertion or CI gate.",
+        "D": "Incorrect: Manual inspection is not scalable and provides no CI automation or regression protection."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ldp/unit-testing",
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/transform"
+      ]
+    },
+    {
+      "id": 32,
+      "domain": "Data Ingestion & Acquisition",
+      "topic": "Auto Loader vs COPY INTO vs read_files for different scales",
+      "stem": "Your team receives 500 GB of compressed Parquet files daily from a vendor SFP drop into an S3 bucket with inconsistent naming. The ingestion SLA is 15 minutes end-to-end (detect, ingest, transform). You cannot modify the vendor's upload schedule or file format. Which approach minimizes latency and operational overhead while scaling to future 2 TB+ volumes?",
+      "code": null,
+      "options": {
+        "A": "Auto Loader with `cloudFiles` in file-notification mode (SNS/SQS); automatically triggers Lakeflow Declarative Pipeline on new file detection.",
+        "B": "`COPY INTO` with recursive glob pattern; Lakeflow job scheduled every 5 minutes to check for new files.",
+        "C": "`read_files` in a Lakeflow Declarative Pipeline with table schema inference; batch every 10 minutes.",
+        "D": "Manual Python script with `df.read.parquet()` on all files; run via job every 5 minutes and filter already-loaded files by modification time."
+      },
+      "answer": "A",
+      "explanation": "Auto Loader with file-notification mode provides event-driven ingestion (millisecond detection), scales to 2TB+ volumes without rescanning, and eliminates polling latency. File-notification mode (SNS/SQS) is the fastest and most cost-efficient for continuous high-volume ingestion. COPY INTO and read_files require polling; manual scripts lack resilience and scalability.",
+      "optExpl": {
+        "A": "Correct: Auto Loader + file-notification mode achieves millisecond latency, auto-scales, and integrates natively with Lakeflow.",
+        "B": "Incorrect: COPY INTO with polling every 5 min does not meet 15-min SLA reliably at 500 GB/day (can create bottlenecks); not event-driven.",
+        "C": "Incorrect: read_files with batch polling every 10 min adds unnecessary latency; not optimized for large volumes.",
+        "D": "Incorrect: Manual script with modification-time filtering is fragile, not idempotent, and lacks fault tolerance."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/",
+        "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-detection-modes",
+        "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/best-practices"
+      ]
+    },
+    {
+      "id": 33,
+      "domain": "Monitoring and Alerting",
+      "topic": "Failure analysis with system.lakeflow job run tables",
+      "stem": "A Lakeflow Declarative Pipeline that ingests 10M rows daily failed mid-run at 08:15 UTC. You need to determine which task failed, how many rows processed before failure, and whether the failure is transient (retry) or permanent (requires fix). Your monitoring dashboard only shows a generic 'FAILED' status. Which system table and query pattern enables root-cause analysis?",
+      "code": null,
+      "options": {
+        "A": "Query `system.lakeflow.runs` to find the failed pipeline run; then inspect `run.start_time` and `run.end_time` to estimate row throughput.",
+        "B": "Query `system.lakeflow.job_task_runs` filtered by failed state; extract `task_name`, `rows_processed`, `error_message` to identify the failing step and error type.",
+        "C": "Enable Spark driver logs via cluster logging; search for 'FAILED' in logs and cross-reference with `system.jobs.runs` for timing.",
+        "D": "Check the Lakeflow UI's 'Run Details' page and manually click through each task; record task names and row counts from displayed tiles."
+      },
+      "answer": "B",
+      "explanation": "`system.lakeflow.job_task_runs` provides granular per-task run telemetry including `task_name`, `rows_processed`, and `error_message`. This enables pinpointing which task failed, how many rows succeeded before failure, and the error type (transient vs permanent). Audit logs track permissions and API calls, not schema changes. Driver logs require manual searching; this is unstructured and time-consuming. Manual UI inspection is not scalable and does not enable automated alerting.",
+      "optExpl": {
+        "A": "Incorrect: `system.lakeflow.runs` shows only pipeline-level status; lacks per-task rows processed and error details.",
+        "B": "Correct: `system.lakeflow.job_task_runs` provides task-level telemetry: task name, rows processed, and error message for RCA.",
+        "C": "Incorrect: Driver logs are unstructured and time-consuming to search; not the intended monitoring path.",
+        "D": "Incorrect: Manual UI inspection is not scalable and does not enable automated alerting."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ldp/unit-testing"
+      ]
+    },
+    {
+      "id": 34,
+      "domain": "Data Manipulation",
+      "topic": "Higher-order functions on arrays (transform, filter, aggregate)",
+      "stem": "You have a table of customer transactions with a nested `items` array, each item containing `(product_id, price, discount_percent)`. You need to compute the net amount per item (price * (1 - discount_percent / 100)) for each transaction, filter items where net amount > $10, and sum the result. You must do this in a single SQL expression without exploding the array. Which higher-order function chain achieves this?",
+      "code": {
+        "lang": "sql",
+        "src": "SELECT\n  customer_id,\n  items,\n  -- Option: use transform, filter, and aggregate\n  AGGREGATE(\n    FILTER(\n      TRANSFORM(items, x -> x.price * (1 - x.discount_percent / 100)),\n      x -> x > 10\n    ),\n    0,\n    (acc, x) -> acc + x\n  ) AS total_net\nFROM transactions"
+      },
+      "options": {
+        "A": "TRANSFORM to compute net amounts, FILTER to keep > $10, AGGREGATE to sum; all nested as `AGGREGATE(FILTER(TRANSFORM(...)))`.",
+        "B": "Use MAP to compute net amounts, then REDUCE to filter and sum in one pass.",
+        "C": "Explode the array into rows, compute net amount, filter with WHERE, GROUP BY customer_id and SUM.",
+        "D": "Use a window function with OVER (PARTITION BY customer_id) and aggregate the array inline."
+      },
+      "answer": "A",
+      "explanation": "TRANSFORM computes net amounts, FILTER selects items > $10, and AGGREGATE sums them\u2014all without exploding. This is the idiomatic Databricks approach for nested-array operations. MAP and REDUCE are not standard SQL higher-order functions in Databricks SQL. Exploding rows negates the benefit of arrays and adds shuffle complexity. Window functions do not operate on nested arrays; this is the wrong pattern.",
+      "optExpl": {
+        "A": "Correct: TRANSFORM \u2192 FILTER \u2192 AGGREGATE is the standard, readable chain for nested-array transformations without explosion.",
+        "B": "Incorrect: MAP and REDUCE are not standard SQL higher-order functions in Databricks SQL.",
+        "C": "Incorrect: Exploding rows negates the benefit of arrays; adds shuffle and complexity.",
+        "D": "Incorrect: Window functions do not operate on nested arrays; wrong pattern."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/semi-structured/higher-order-functions"
+      ]
+    },
+    {
+      "id": 35,
+      "domain": "Cost & Performance Optimization",
+      "topic": "Delta disk cache vs query result cache trade-offs",
+      "stem": "Your BI team runs 200 identical summary queries per day on a 500 GB fact table, each querying the same 10 GB of hot data. Query latency SLA is < 5 seconds. You have a choice: enable Delta disk cache on the cluster, or rely on query result cache. Delta disk cache costs $0.30/GB-month, query result cache costs $0.10/GB-month. Which caching strategy minimizes cost while meeting SLA?",
+      "code": null,
+      "options": {
+        "A": "Enable Delta disk cache on a dedicated cluster; it persists across sessions and scales with fact-table size; query result cache has too much overhead for repeated queries.",
+        "B": "Use both Delta disk cache and query result cache; dual caching ensures fastest repeated queries and lowest total cost.",
+        "C": "Neither cache is worth the overhead; just run queries on a larger instance type to speed up computation directly.",
+        "D": "Use query result cache; it caches the final result after all computations, costs less, and automatically invalidates on table changes."
+      },
+      "answer": "D",
+      "explanation": "Query result cache is cheaper ($0.10/GB-month vs $0.30/GB-month) for identical repeated queries, caches the final result (not intermediate I/O), and auto-invalidates. Since queries are identical, the final result is all that matters. Delta disk cache is better for varied queries that share the same base data.",
+      "optExpl": {
+        "A": "Incorrect: Delta disk cache is overkill for identical queries; costs 3x more than query result cache and caches intermediate I/O, not final results.",
+        "B": "Incorrect: Dual caching is wasteful; query result cache alone suffices.",
+        "C": "Incorrect: Larger instances increase compute cost; caching is the right optimization for repeated queries.",
+        "D": "Correct: Query result cache is cheaper, simpler, and perfect for 200 identical queries per day."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/sql/language-manual/delta-cache"
+      ]
+    },
+    {
+      "id": 36,
+      "domain": "Data Security and Compliance",
+      "topic": "Pseudonymization with salted hashing vs tokenization",
+      "stem": "Your company handles PII (email, SSN, phone) and must comply with GDPR's pseudonymization requirement for analytics. You need to transform PII in a way that: (1) is deterministic (same input \u2192 same output for joins), (2) cannot be reversed by analysts, (3) passes regulatory audit. A colleague suggests tokenization; another suggests salted MD5 hashing. Which approach is correct and why?",
+      "code": null,
+      "options": {
+        "A": "Tokenization; it replaces PII with random tokens stored in a secure vault, and analysts cannot reverse it without vault access.",
+        "B": "Salted MD5 hashing with a team secret; it is deterministic, cannot be reversed, and analysts cannot recover the original value.",
+        "C": "Tokenization; salted hashing can be brute-forced with a rainbow table if the salt is discovered.",
+        "D": "Salted SHA-256 hashing with a strong salt from a secrets manager; it is deterministic, cryptographically strong, and irreversible for analysts."
+      },
+      "answer": "D",
+      "explanation": "Salted SHA-256 hashing from a secrets manager is the best balance: deterministic (preserves joins), strong hashing (resists brute force), and analysts cannot reverse without the salt. GDPR pseudonymization accepts strong hashing. Tokenization requires vault infrastructure and breaks deterministic joins needed for analytics. MD5 is cryptographically weak and vulnerable to rainbow tables, even with salt. Tokenization adds operational complexity; salted SHA-256 is sufficient for GDPR.",
+      "optExpl": {
+        "A": "Incorrect: Tokenization requires vault infrastructure and breaks deterministic joins needed for analytics.",
+        "B": "Incorrect: MD5 is cryptographically weak and vulnerable to rainbow tables, even with salt.",
+        "C": "Incorrect: Tokenization adds operational complexity; salted SHA-256 is sufficient for GDPR.",
+        "D": "Correct: Salted SHA-256 from secrets manager is deterministic, strong, irreversible, and meets GDPR pseudonymization requirements."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/oltp/projects/lakebase-tokenizer"
+      ]
+    },
+    {
+      "id": 37,
+      "domain": "Debugging and Deploying",
+      "topic": "Debugging failed pipeline update with event log",
+      "stem": "Your Lakeflow Declarative Pipeline updated from DBR 14.2 to 15.3 and fails on the first transformation with error 'StructField at index 0 is missing'. The pipeline did not change code; only the DBR changed. You need to identify which table schema changed between versions. Where do you look first?",
+      "code": null,
+      "options": {
+        "A": "Check the Databricks event log in `system.billing.audit_logs`; filter by `event_category = 'SCHEMA_CHANGE'` and `resource_type = 'TABLE'` to find schema differences.",
+        "B": "Query the pipeline task history in `system.lakeflow.job_task_runs`; look for the 'FAILED' task and inspect the `error_message` field for column names.",
+        "C": "Review the Spark driver logs via cluster logging in the Compute settings; search for 'StructField' errors to pinpoint the affected column.",
+        "D": "Query `system.object_lineage` filtered by your pipeline's output table; trace back upstream to the first task and inspect source schema changes in version history."
+      },
+      "answer": "C",
+      "explanation": "Driver logs from the failed cluster run contain the full Spark stack trace, including which column/table caused the 'StructField' error. This provides immediate context on the schema mismatch. Event audit logs track permission changes, not schema drift; job_task_runs lacks detailed error context; lineage is for dependency tracking, not debugging.",
+      "optExpl": {
+        "A": "Incorrect: Audit logs track permissions and API calls, not schema changes on tables.",
+        "B": "Incorrect: job_task_runs shows failure status but not the detailed Spark error stack.",
+        "C": "Correct: Driver logs contain the full error trace with column/table details for immediate RCA.",
+        "D": "Incorrect: object_lineage tracks data flow, not schema version history."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/admin/system-tables/audit-logs"
+      ]
+    },
+    {
+      "id": 38,
+      "domain": "Developing Code",
+      "topic": "Idempotent foreachBatch MERGE using batch id",
+      "stem": "Your Structured Streaming pipeline ingests event logs into a Delta table. You use `foreachBatch` to MERGE new events with existing data, deduplicating on (user_id, event_timestamp). However, on stream restart (e.g., after a failure), the same batch of events are reprocessed, causing duplicate merges. You need idempotency without reprocessing the entire history. How do you make the MERGE idempotent per batch?",
+      "code": {
+        "lang": "python",
+        "src": "def foreachBatch_merge(batch_df, batch_id):\n    # Idempotent merge: use batch_id in the merge condition\n    batch_df.write.format('delta').mode('merge').options(\n        mergeSchema='true'\n    ).option('idempotencyKey', batch_id).foreachBatch(\n        lambda df, bid: df.merge(\n            delta_table,\n            condition=f'delta_table.user_id = df.user_id AND delta_table.event_ts = df.event_ts AND delta_table._batch_id = {bid}'\n        ).whenMatched().updateAll().whenNotMatched().insertAll().execute()\n    ).start()"
+      },
+      "options": {
+        "A": "Add a `_batch_id` column to the batch DataFrame and include it in the MERGE condition; if (user_id, event_timestamp, _batch_id) match an existing row, skip the merge.",
+        "B": "Store the batch_id in a separate checkpoint table; before each MERGE, query the checkpoint to skip already-processed batches.",
+        "C": "Use `foreachBatch` with `idempotencyKey` option set to `batch_id`; this tells the Streaming API to deduplicate by batch ID automatically.",
+        "D": "Enable `MERGE ... IF NOT EXISTS` and rely on Primary Key constraints to prevent duplicates across batches."
+      },
+      "answer": "A",
+      "explanation": "`_batch_id` column in the MERGE condition ensures that if the same batch is reprocessed, the row already exists (matching user_id, event_timestamp, and batch_id), so WHEN MATCHED updates/skips, not inserts. This ensures idempotency without external state tracking. Manual checkpoint table adds operational overhead and complexity. `idempotencyKey` is not a valid PySpark DataFrameWriter option in any version. `IF NOT EXISTS` is not standard MERGE syntax; Primary Keys alone don't guarantee idempotency on restart.",
+      "optExpl": {
+        "A": "Correct: `_batch_id` in MERGE condition ensures idempotency per batch without external state.",
+        "B": "Incorrect: Manual checkpoint table adds operational overhead; not the built-in approach.",
+        "C": "Incorrect: `idempotencyKey` is not a valid PySpark DataFrameWriter option.",
+        "D": "Incorrect: `IF NOT EXISTS` is not standard SQL MERGE syntax; Primary Keys alone don't guarantee idempotency on restart."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/mergeInto",
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/datastreamwriter/foreachBatch"
+      ]
+    },
+    {
+      "id": 39,
+      "domain": "Data Governance",
+      "topic": "Ownership vs grants: who can grant, transfer ownership",
+      "stem": "A data analyst has `SELECT` + `MODIFY` permissions on a critical `sales.transactions` table (not the owner). Your governance policy requires the analyst to be able to share read access with specific colleagues without involving the data owner or IT. What privilege must you grant the analyst to enable this, and who has the authority to transfer table ownership if the current owner leaves?",
+      "code": null,
+      "options": {
+        "A": "Grant the analyst `ADMIN` role; this allows them to grant/revoke any permission. The current owner can transfer ownership via `ALTER TABLE ... OWNER = analyst`.",
+        "B": "Grant the analyst `OWNERSHIP` on the table; they can then use `GRANT SELECT TO ...` on colleagues. Only the current owner (or account admin) can transfer ownership via `ALTER TABLE ... OWNER`.",
+        "C": "Grant the analyst `GRANT_OPTION` on `SELECT`; they can delegate `SELECT` to colleagues. The current owner retains transfer authority; account admins can force a transfer.",
+        "D": "Analysts cannot grant permissions by policy; only owners and admins can. Transfer ownership requires IT approval and re-governance from scratch."
+      },
+      "answer": "B",
+      "explanation": "Ownership grant provides authority to assign permissions to others and enables self-service access management. Only the owner (or account admin with ADMIN privilege) can transfer ownership via `ALTER TABLE`. This balances governance (controlled delegation) with operational efficiency (analysts manage their domain).",
+      "optExpl": {
+        "A": "Incorrect: ADMIN is overly broad; not required for selective grant authority.",
+        "B": "Correct: OWNERSHIP on the table enables selective `GRANT` by the analyst; transfer requires owner or account admin.",
+        "C": "Incorrect: GRANT_OPTION is for specific permission types (not standard Databricks syntax); not the right granularity.",
+        "D": "Incorrect: Governance can enable analysts to grant permissions without IT involvement on each request."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/oltp/projects/transfer-object-ownership"
+      ]
+    },
+    {
+      "id": 40,
+      "domain": "Data Modeling",
+      "topic": "SCD Type 2 point-in-time join using `__START_AT` / `__END_AT`",
+      "stem": "You have a `dim_customer` SCD Type 2 table with effective-dated rows (customer_id, name, status, __START_AT, __END_AT), and a `fact_orders` table with (order_id, customer_id, order_date). You need to join orders to the customer dimension as it existed at order date (not current snapshot). How do you write the point-in-time join?",
+      "code": {
+        "lang": "sql",
+        "src": "SELECT\n  o.order_id,\n  d.name,\n  d.status\nFROM fact_orders o\nJOIN dim_customer d ON\n  o.customer_id = d.customer_id\n  AND o.order_date >= d.__START_AT\n  AND (o.order_date < d.__END_AT OR d.__END_AT IS NULL)\nORDER BY o.order_id"
+      },
+      "options": {
+        "A": "Use `o.order_date BETWEEN d.__START_AT AND d.__END_AT`; this ensures the order sees the correct customer state.",
+        "B": "Use `o.order_date >= d.__START_AT AND (o.order_date < d.__END_AT OR d.__END_AT IS NULL)`; this handles the time window correctly (start inclusive, end exclusive).",
+        "C": "Group by order_id and customer_id, then take the MAX(__START_AT) row where MAX(__START_AT) <= order_date; simplest.",
+        "D": "Use `o.order_date = d.__START_AT` to get the exact row created on order date; more precise than range queries."
+      },
+      "answer": "B",
+      "explanation": "The condition `order_date >= __START_AT AND (order_date < __END_AT OR __END_AT IS NULL)` correctly handles the SCD Type 2 time window: start is inclusive, end is exclusive (NULL = current/no end date). BETWEEN is ambiguous with NULL end dates and does not handle open-ended (current) rows correctly. GROUP BY + MAX approach is inefficient and may return the wrong row if multiple versions exist in the window. Exact match on __START_AT misses orders placed after dimension change.",
+      "optExpl": {
+        "A": "Incorrect: BETWEEN is ambiguous with NULL end dates; does not handle open-ended (current) rows correctly.",
+        "B": "Correct: `>= __START_AT AND (< __END_AT OR IS NULL)` is the standard SCD Type 2 time-window condition.",
+        "C": "Incorrect: GROUP BY + MAX approach is inefficient and may return wrong row if multiple versions exist in the window.",
+        "D": "Incorrect: Exact match on __START_AT misses orders placed after dimension change."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/delta/merge"
+      ]
+    },
+    {
+      "id": 41,
+      "domain": "Cost & Performance Optimization",
+      "topic": "CLUSTER BY AUTO for large fact tables",
+      "stem": "Your `fact_events` table has 100B rows with predictive optimization enabled. Query patterns show: 60% filter by `user_id`, 25% by `region + date_range`, 15% by `event_type`. You want to optimize without manual partitioning. DBR 15.4 introduced `CLUSTER BY AUTO` for Unity Catalog managed tables. What does it do and is it suitable for this workload?",
+      "code": null,
+      "options": {
+        "A": "`CLUSTER BY AUTO` analyzes query patterns and automatically selects clustering columns when predictive optimization is enabled; it adapts as patterns change.",
+        "B": "`CLUSTER BY AUTO` is SQL syntax that you must set explicitly; it clusters by all non-NULL columns and works for any query pattern.",
+        "C": "`CLUSTER BY AUTO` is a Lakeflow optimization that runs OPTIMIZE automatically every hour; no configuration needed.",
+        "D": "`CLUSTER BY AUTO` is not suitable for tables with 100B rows; only tables < 10B benefit from clustering."
+      },
+      "answer": "A",
+      "explanation": "`CLUSTER BY AUTO` automatically learns which columns most frequently filter queries (your 60% user_id, 25% region+date) and clusters by those. This is suitable here because queries show clear patterns. It requires Unity Catalog managed tables and predictive optimization. Incorrect approaches include: manually specifying SQL syntax (confuses it with manual configuration), treating it as a Lakeflow scheduling feature (it's a table property), or thinking 100B rows are too large (they benefit significantly).",
+      "optExpl": {
+        "A": "Correct: `CLUSTER BY AUTO` selects by query patterns when predictive optimization is enabled; suitable for workloads with dominant filter columns.",
+        "B": "Incorrect: `CLUSTER BY AUTO` is automatic, not manual configuration; it learns patterns, not a user-set syntax.",
+        "C": "Incorrect: `CLUSTER BY AUTO` is a table property, not a Lakeflow scheduling feature; distinct from `OPTIMIZE` automation.",
+        "D": "Incorrect: `CLUSTER BY AUTO` helps large tables (100B rows) when query patterns exist; adapts over time to improve performance."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-cluster-by"
+      ]
+    },
+    {
+      "id": 42,
+      "domain": "Data Ingestion & Acquisition",
+      "topic": "Exposing tables to external engines as Iceberg (managed vs external)",
+      "stem": "Your organization runs Databricks for analytics and has external tools (Presto, Trino, Spark on EC2) that need direct read access to your tables. You must use the Iceberg format for interoperability. Should you use managed Iceberg (store tables in Databricks managed storage), Iceberg REST catalog (centralized metadata), or external Iceberg reads (point external engines at your Delta Lake directly)?",
+      "code": null,
+      "options": {
+        "A": "Managed Iceberg; Databricks stores Iceberg metadata in managed storage, and external engines query via REST catalog API.",
+        "B": "External Iceberg reads; external engines read your Delta tables directly as Iceberg without converting; simplest setup.",
+        "C": "Iceberg REST catalog; you run a dedicated REST server that serves Iceberg metadata to external engines pointing at your S3/ADLS2 storage.",
+        "D": "Managed Iceberg + Iceberg REST catalog together; dual setup ensures both Databricks and external engines can query Iceberg format."
+      },
+      "answer": "C",
+      "explanation": "Iceberg REST catalog provides a centralized metadata service for external engines to read Iceberg tables from your data lake (S3/ADLS2). External engines (Presto, Trino) connect to the REST API, not Databricks. Managed Iceberg is for Databricks-internal use; external engines cannot directly query Databricks-managed storage. External engines cannot directly read Delta tables as Iceberg without a REST catalog service. Dual setup (managed + REST) is redundant; REST catalog alone is sufficient.",
+      "optExpl": {
+        "A": "Incorrect: Managed Iceberg is for Databricks-internal use; external engines cannot directly query Databricks-managed storage.",
+        "B": "Incorrect: External engines cannot directly read Delta tables as Iceberg without a REST catalog service.",
+        "C": "Correct: Iceberg REST catalog is the standard for external-engine interoperability; they query the REST API, not Databricks.",
+        "D": "Incorrect: Dual setup is redundant; REST catalog alone is sufficient."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/delta/iceberg-reads",
+        "https://docs.databricks.com/aws/en/external-access/iceberg"
+      ]
+    },
+    {
+      "id": 43,
+      "domain": "Developing Code",
+      "topic": "Stream-stream join with watermarks on both sides",
+      "stem": "You have two Structured Streaming sources: `stream_clicks` (user_id, click_time) and `stream_purchases` (user_id, purchase_time). You need to join them to find purchases within 10 minutes after a click. Both streams are late-arriving (up to 30 minutes). How do you set watermarks on both streams and define the join condition to prevent state explosion?",
+      "code": {
+        "lang": "python",
+        "src": "clicks = (\n    spark.readStream.kafka(...)\n    .withWatermark('click_time', '30 minutes')\n)\npurchases = (\n    spark.readStream.kafka(...)\n    .withWatermark('purchase_time', '30 minutes')\n)\njoined = clicks.join(\n    purchases,\n    (clicks.user_id == purchases.user_id)\n    & (purchases.purchase_time >= clicks.click_time)\n    & (purchases.purchase_time <= clicks.click_time + interval '10 minutes'),\n    'leftOuter'\n)"
+      },
+      "options": {
+        "A": "Watermark both streams at 30 minutes; set join condition to `purchase_time BETWEEN click_time AND click_time + 10 minutes`; use left outer join to keep all clicks.",
+        "B": "Watermark only clicks at 30 minutes; purchases don't need a watermark since they are matched against clicks.",
+        "C": "Watermark both streams; use `joinWithStateTimeout` to auto-drop state older than 10 minutes; prevents state explosion.",
+        "D": "Watermark clicks at 10 minutes, purchases at 30 minutes; join on user_id only, then filter with WHERE for time range in the result."
+      },
+      "answer": "A",
+      "explanation": "Both streams need watermarks (30 min late-arrival tolerance). The join condition constrains the match window to 10 minutes, and Spark's state manager automatically cleans up state older than watermark + constraint window. Both streams need watermarks for Spark to clean up state safely; `joinWithStateTimeout` is not a standard Spark Structured Streaming API method. Post-filter approach is inefficient and does not guide state cleanup; time range must be in join condition.",
+      "optExpl": {
+        "A": "Correct: Dual watermarks + time-range join condition prevents state explosion by limiting match window.",
+        "B": "Incorrect: Both streams need watermarks for Spark to clean up state safely.",
+        "C": "Incorrect: `joinWithStateTimeout` is not a standard Spark Structured Streaming API method.",
+        "D": "Incorrect: Post-filter is inefficient and does not guide state cleanup; time range must be in join condition."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/withWatermark"
+      ]
+    },
+    {
+      "id": 44,
+      "domain": "Monitoring and Alerting",
+      "topic": "Monitoring runs via Jobs API / Databricks CLI",
+      "stem": "Your team runs 50 Lakeflow jobs daily and needs automated alerting when a job fails (email on failure, JIRA ticket creation). You want to centralize the monitoring logic in a Python script on your laptop that runs every 5 minutes. Which monitoring approach is most reliable and requires the least infrastructure?",
+      "code": null,
+      "options": {
+        "A": "Query `system.jobs.runs` via Databricks SQL; filter by `state = 'FAILED'` and recent runs; post failures to Slack via webhook.",
+        "B": "Use Databricks CLI `databricks jobs list-runs` in a cron script; parse JSON output and post alerts; run from your laptop or a simple EC2 instance.",
+        "C": "Enable Databricks notifications in Workspace settings and subscribe to email alerts; no code needed.",
+        "D": "Poll the Jobs API (`GET /api/2.1/jobs/runs/list`) in a Python script; check for failed runs and trigger alerts via HTTP POST to your monitoring service."
+      },
+      "answer": "D",
+      "explanation": "Jobs API (`/api/2.1/jobs/runs/list`) is the programmatic, scalable approach for monitoring. It returns structured JSON (state, error_message, run_id), integrates easily with alert services, and is more reliable than parsing CLI output. SQL query requires a running SQL Warehouse, making it less efficient for polling. CLI output parsing is brittle and not reliable for production monitoring. Workspace email notifications lack customization and integration with JIRA and Slack.",
+      "optExpl": {
+        "A": "Incorrect: SQL query requires a running SQL Warehouse; less efficient for polling.",
+        "B": "Incorrect: CLI output parsing is brittle; not reliable for production monitoring.",
+        "C": "Incorrect: Workspace email notifications lack customization and integration with JIRA/Slack.",
+        "D": "Correct: Jobs API is the standard, reliable approach; returns structured data for easy integration."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/reference/jobs-api-2-1-updates",
+        "https://docs.databricks.com/aws/en/reference/jobs-api-2-2-updates"
+      ]
+    },
+    {
+      "id": 45,
+      "domain": "Data Manipulation",
+      "topic": "`ai_query` batch inference inside a pipeline with cost/latency considerations",
+      "stem": "Your Lakeflow Declarative Pipeline processes 1M product reviews daily and must classify sentiment using a Foundation Model. You have two options: (1) `ai_query` function on each row during transformation, or (2) batch the rows, call the model's batch endpoint, and join results back. Each model inference costs $0.001 per call. Which approach minimizes cost and meets a 2-hour SLA?",
+      "code": null,
+      "options": {
+        "A": "Use `ai_query` on each row; Lakeflow automatically batches calls internally, so cost is the same as manual batching but code is simpler.",
+        "B": "Manually batch rows in chunks of 100; call the Foundation Model batch endpoint per chunk; join results back; costs less than `ai_query` per-row.",
+        "C": "Use `ai_query`; it streams results as they arrive, so latency is predictable and cost is per-call (no batching overhead).",
+        "D": "Cache the model predictions in a reference table; for new reviews, query the cache first; only call the model for new unique review texts."
+      },
+      "answer": "B",
+      "explanation": "Manual batching (100+ rows per call) reduces the number of calls from 1M to 10K, cutting cost by 99%. Batch endpoints are designed for throughput and meet the 2-hour SLA. `ai_query` does not automatically batch; each call is a separate API invocation ($1,000 cost for 1M calls). Per-row streaming adds unnecessary latency complexity. Caching is valuable but does not address the main cost driver (1M calls).",
+      "optExpl": {
+        "A": "Incorrect: `ai_query` does not automatically batch; each call is a separate API invocation ($1,000 cost).",
+        "B": "Correct: Manual batching (100 rows/call) reduces calls to 10K; dramatic cost saving; batch endpoints meet 2h SLA.",
+        "C": "Incorrect: Per-row streaming is not cost-optimized; results arrive asynchronously, not predictably.",
+        "D": "Incorrect: Caching is valuable but does not address the main cost driver (1M calls)."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/large-language-models/batch-inference-pipelines"
+      ]
+    },
+    {
+      "id": 46,
+      "domain": "Cost & Performance Optimization",
+      "topic": "Small files from streaming writes: auto-compaction, optimized writes, OPTIMIZE",
+      "stem": "Your Lakeflow Declarative Pipeline ingests 100 GB daily from Kafka, writing to a Delta table via `foreachBatch`. After 7 days, the table has 700 GB of data scattered across 70,000 small files (1 MB each). Query latency has degraded 10x. Which optimization minimizes small files while avoiding excessive compaction cost?",
+      "code": null,
+      "options": {
+        "A": "Run `OPTIMIZE TABLE` every hour; it will compact files automatically into larger partitions.",
+        "B": "Enable `optimizedWrite=true` and `autoCompact=true` in the DataFrameWriter; Lakeflow will automatically compact small files on write.",
+        "C": "Increase the `foreachBatch` batch size from 100 GB to 1 TB; larger batches produce fewer, larger files naturally.",
+        "D": "Run a weekly `OPTIMIZE TABLE` job; it compacts 70k files into ~100 larger files, balancing cost and performance."
+      },
+      "answer": "D",
+      "explanation": "Weekly `OPTIMIZE` compacts 70k files into fewer, larger files (~100), reducing query overhead. Hourly `OPTIMIZE` is too costly; `optimizedWrite=true` helps future writes but does not fix historical small files; batch size cannot be arbitrarily increased. Weekly `OPTIMIZE` is the standard practice for streaming-write compaction.",
+      "optExpl": {
+        "A": "Incorrect: Hourly `OPTIMIZE` on 700 GB is prohibitively expensive; weekly is sufficient.",
+        "B": "Incorrect: `autoCompact` addresses future writes; does not fix 70k existing small files.",
+        "C": "Incorrect: Batch size is constrained by stream throughput; artificial increase is not feasible.",
+        "D": "Correct: Weekly `OPTIMIZE` is the balanced, standard practice for streaming-write small-file cleanup."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/tables/operations/optimize"
+      ]
+    },
+    {
+      "id": 47,
+      "domain": "Data Security and Compliance",
+      "topic": "GDPR erasure with deletion vectors (REORG TABLE ... APPLY PURGE + VACUUM)",
+      "stem": "Your team manages a critical `customers` table with 50B rows and 5 years of historical data in Delta Lake. A GDPR erasure request arrives: delete all data for customer_id = 12345. Your backup retention SLA is 7 days, and compliance audits occur monthly. Re-ingesting 50B rows weekly is prohibitively expensive. You need to erase the customer's data efficiently while preserving audit trails and meeting the 7-day retention SLA. How do you accomplish this?",
+      "code": {
+        "lang": "sql",
+        "src": "-- Mark rows for deletion using deletion vectors\nDELETE FROM customers WHERE customer_id = 12345;\n\n-- Compact and apply deletion vectors\nREORG TABLE customers APPLY (PURGE);\n\n-- Remove old versions and unneeded files\nVACUUM customers RETAIN 0 HOURS;"
+      },
+      "options": {
+        "A": "Use `DELETE FROM customers WHERE customer_id = 12345`; Delta's deletion vectors mark rows without re-writing files.",
+        "B": "Use `DELETE`, then `OPTIMIZE` to compact files and purge deleted rows; this is the standard GDPR-erasure pattern.",
+        "C": "Use `DELETE`, then `REORG TABLE ... APPLY (PURGE)` to physically remove deleted rows; finally `VACUUM` to clean old versions.",
+        "D": "Use `DROP TABLE` and re-ingest data excluding the customer; only reliable way to guarantee no traces."
+      },
+      "answer": "C",
+      "explanation": "`DELETE` marks rows with deletion vectors. `REORG TABLE ... APPLY (PURGE)` physically removes marked rows from files. `VACUUM` cleans up old versions and unreferenced files. This is the GDPR-compliant, efficient approach. Incorrect approaches: using DELETE alone only marks rows without purging; using OPTIMIZE compacts but may not physically purge deleted rows; dropping and re-ingesting is wasteful and unnecessary with deletion vectors.",
+      "optExpl": {
+        "A": "Incorrect: `DELETE` alone marks rows; does not physically remove them from files.",
+        "B": "Incorrect: `OPTIMIZE` compacts but may not physically purge deleted rows; not sufficient for GDPR.",
+        "C": "Correct: `DELETE` \u2192 `REORG APPLY (PURGE)` \u2192 `VACUUM` ensures physical deletion and compliance.",
+        "D": "Incorrect: `DROP TABLE` and re-ingest is wasteful and unnecessary with deletion vectors."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/admin/workspace-settings/deletion-vectors",
+        "https://docs.databricks.com/aws/en/sql/language-manual/delta-reorg-table",
+        "https://docs.databricks.com/aws/en/tables/features/deletion-vectors"
+      ]
+    },
+    {
+      "id": 48,
+      "domain": "Data Modeling",
+      "topic": "Choosing clustering keys for a large fact table based on query patterns",
+      "stem": "Your `fact_sales` table (100B rows) is queried by: (A) Regional managers filtering on `region + date_range` (60% of queries), (B) Finance querying `product_category + fiscal_quarter` (30%), and (C) Ad-hoc analysts on various columns (10%). Query latency SLA is 10 seconds. Which clustering key is best?",
+      "code": null,
+      "options": {
+        "A": "Cluster by `(region, date_range, product_category)`; covers all query patterns without missing the top queries.",
+        "B": "Cluster by `(region, date_range)` only; 60% query coverage is the strongest signal; ad-hoc queries will be slower but acceptable.",
+        "C": "Cluster by `(date_range, product_category, region)`; order by frequency, not selectivity.",
+        "D": "Do not cluster; run `OPTIMIZE` instead; for 10-second SLA on 100B rows, clustering is insufficient."
+      },
+      "answer": "B",
+      "explanation": "Cluster by the top 2\u20133 query columns: `(region, date_range)` covers 60% (highest-impact queries). Adding more columns (product_category) dilutes the clustering benefit and increases memory overhead. Ad-hoc queries (10%) degrade gracefully without clustering. Over-clustering dilutes benefit; top 2\u20133 columns are optimal for impact. Order clustering by selectivity (cardinality reduction), not query frequency. Clustering + `OPTIMIZE` together meet 10-second SLA on large tables.",
+      "optExpl": {
+        "A": "Incorrect: Over-clustering dilutes benefit; top 2\u20133 columns are optimal.",
+        "B": "Correct: Cluster by top 60% queries (`region`, `date_range`); balance between impact and overhead.",
+        "C": "Incorrect: Order clustering by selectivity (cardinality reduction), not query frequency.",
+        "D": "Incorrect: Clustering + `OPTIMIZE` together meet 10-second SLA on large tables."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-cluster-by"
+      ]
+    },
+    {
+      "id": 49,
+      "domain": "Developing Code",
+      "topic": "Append flows to fan-in several sources into one streaming table",
+      "stem": "You have three independent data sources (Kafka topic 1, Kafka topic 2, and S3 uploads) that all produce the same schema (id, timestamp, value). You need to ingest all three into a single `unified_events` streaming table. Which approach is cleanest and most maintainable in Lakeflow Declarative Pipelines?",
+      "code": {
+        "lang": "python",
+        "src": "# Option: Append multiple sources to one streaming table\n@flow\ndef ingest_unified():\n    # Source 1: Kafka topic 1\n    kafka1 = read_kafka('topic1')\n    \n    # Source 2: Kafka topic 2\n    kafka2 = read_kafka('topic2')\n    \n    # Source 3: S3 uploads\n    s3_data = read_files('s3://bucket/uploads')\n    \n    # Append all three sources\n    unified = kafka1.union(kafka2).union(s3_data)\n    \n    # Write to streaming table\n    unified.into('unified_events').write()"
+      },
+      "options": {
+        "A": "Create three separate streaming tables, one per source, then union them in a view for downstream queries.",
+        "B": "Use `union` to append all three source DataFrames in a single transformation; write once to `unified_events` streaming table.",
+        "C": "Create one streaming task per source, each writing to `unified_events` with `mode='append'`; Lakeflow merges writes.",
+        "D": "Set up three separate pipelines, each writing to its own table; join them downstream as needed."
+      },
+      "answer": "B",
+      "explanation": "`union` appends rows from multiple DataFrames with the same schema, and writing once to a streaming table is idiomatic and efficient. Separate tables + view adds unnecessary indirection and is not idiomatic for fan-in. Multiple concurrent writes to one table risk conflicts and are not recommended. Separate pipelines duplicate infrastructure and defeat the purpose of fan-in.",
+      "optExpl": {
+        "A": "Incorrect: Separate tables + view adds indirection; not idiomatic for fan-in.",
+        "B": "Correct: `union` all sources and write once to one streaming table; clean and efficient.",
+        "C": "Incorrect: Multiple concurrent writes to one table risk conflicts; not recommended.",
+        "D": "Incorrect: Separate pipelines duplicate infrastructure; defeats the purpose of fan-in."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ldp/concepts/spark-declarative-pipelines"
+      ]
+    },
+    {
+      "id": 50,
+      "domain": "Debugging and Deploying",
+      "topic": "CI/CD with Git folders + Declarative Automation Bundles in a CI system using service principal",
+      "stem": "Your team develops Lakeflow pipelines in a Git repo (main and feature branches). You need CI/CD automation: deploy pipelines from feature branches to a staging workspace, run tests, merge to main, deploy to production. You want to avoid manual approval for production deploys by non-admins. Which CI/CD pattern is safe and least operational?",
+      "code": {
+        "lang": "yaml",
+        "src": "# Declarative Automation Bundle for production deployment\nresources:\n  jobs:\n    production_pipeline:\n      name: \"Production ETL Pipeline\"\n      tasks:\n        - task_key: ingest\n          pipeline_task:\n            pipeline_id: \"${pipeline_id}\"\n  pipelines:\n    etl_pipeline:\n      name: \"ETL Pipeline\"\n      configuration:\n        source: git\n        path: \"pipelines/etl.py\"\n        branch: main"
+      },
+      "options": {
+        "A": "Use Declarative Automation Bundles (DAB) in Git with `databricks bundle deploy`; DABs encode permissions and ownership, preventing unauthorized changes to production resources.",
+        "B": "Store pipeline code in a Git folder; CI runs `databricks pipelines create/update` on feature branches; manual approval gate for production merge.",
+        "C": "Set up a CI system (GitHub Actions) that authenticates with a service principal; deploy DABs from feature branches to staging, then to production on merge to main.",
+        "D": "Push code directly to the Git folder linked in Workspace; Lakeflow auto-deploys on any commit without CI/CD scaffolding."
+      },
+      "answer": "C",
+      "explanation": "Service-principal CI/CD with DABs (GitHub Actions or similar) is the standard pattern: feature branches auto-deploy to staging, merge to main triggers production deploy with audited service-principal identity. DABs encode configuration but require explicit CI workflow; not automatic on their own. Manual approval gates for every production merge are operationally heavy. Auto-deploy on any commit risks accidental production changes and lacks governance.",
+      "optExpl": {
+        "A": "Incorrect: DABs encode configuration but require explicit CI workflow; not automatic.",
+        "B": "Incorrect: Manual approval gates for every production merge are operationally heavy.",
+        "C": "Correct: CI system + service principal + DABs = automated, audited, safe CI/CD without manual intervention.",
+        "D": "Incorrect: Auto-deploy on any commit risks accidental production changes; no governance."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes",
+        "https://docs.databricks.com/aws/en/repos/git-folders-concepts"
+      ]
+    },
+    {
+      "id": 51,
+      "domain": "Data Manipulation",
+      "topic": "`expect_or_fail` vs `expect_or_drop` vs warn semantics in quality checks",
+      "stem": "Your Lakeflow Declarative Pipeline reads raw data and applies quality expectations: `email IS NOT NULL`, `age BETWEEN 18 AND 120`, `status IN ('active', 'inactive')`. Some data is corrupted (5% null emails, 2% age > 120). You have three quality modes for each expectation: fail the pipeline, drop invalid rows, or warn. Which strategy minimizes downtime while maintaining data integrity?",
+      "code": null,
+      "options": {
+        "A": "Use `expect_or_fail` for all expectations; stop the pipeline if any data is invalid; force upstream to fix data.",
+        "B": "Use `expect_or_drop` for all expectations; silently drop invalid rows; ensures pipeline always succeeds.",
+        "C": "Use `expect_or_fail` for critical constraints (email IS NOT NULL); `expect_or_drop` for edge cases (age range); `warn` for advisory rules.",
+        "D": "Use `warn` for all expectations; log invalid rows but process them anyway; audit later."
+      },
+      "answer": "C",
+      "explanation": "`expect_or_fail` enforces non-negotiable constraints (email NOT NULL = functional requirement); `expect_or_drop` handles edge cases (age > 120 is rare, drop is safe); `warn` is for advisory rules. This mix balances data quality with operational resilience. `expect_or_fail` for all expectations causes excessive pipeline failures and is not operational. Silent dropping of invalid rows is a data-integrity risk and loses visibility. Processing invalid data violates data governance; audit-only is insufficient.",
+      "optExpl": {
+        "A": "Incorrect: `expect_or_fail` for all expectations causes excessive pipeline failures; not operational.",
+        "B": "Incorrect: Silent dropping of invalid rows is a data-integrity risk; loses visibility.",
+        "C": "Correct: Tiered expectations (fail for critical, drop for edge cases, warn for advisory) balance quality and resilience.",
+        "D": "Incorrect: Processing invalid data violates data governance; audit-only is insufficient."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ldp/unit-testing"
+      ]
+    },
+    {
+      "id": 52,
+      "domain": "Monitoring and Alerting",
+      "topic": "Auditing who read a table with `system.access.audit`",
+      "stem": "Your organization handles HIPAA-regulated customer data in Databricks. Your compliance team must audit table access monthly for SOC2 requirements. You need to generate daily audit reports showing: who accessed sensitive tables, when, from which workspace, which SQL was executed, and detect unauthorized access patterns. Previous monitoring gaps allowed undetected reads for 3 days. Which system table provides comprehensive access telemetry for compliance?",
+      "code": null,
+      "options": {
+        "A": "`system.access.audit` contains user identity, timestamp, resource type (table), action (SELECT), workspace_id, and query text.",
+        "B": "`system.query_history` shows queries run on a table; filter by table name and time range; extract user and SQL.",
+        "C": "`system.event_log` records all workspace events including table access; filter by action = 'READ'.",
+        "D": "`system.admin.jobs.runs` tracks job executions; query details show table access within each job step."
+      },
+      "answer": "A",
+      "explanation": "`system.access.audit` is the compliance audit table: tracks who (user_id), what (resource, action), when (timestamp), and where (workspace_id). Incorrect approaches: query_history shows queries but lacks user identity and workspace context; event_log tracks infrastructure events, not detailed table-read events; jobs.runs tracks job execution, not direct user table access.",
+      "optExpl": {
+        "A": "Correct: `system.access.audit` is the standard compliance table for user data-access auditing.",
+        "B": "Incorrect: `system.query_history` shows queries but lacks user identity and workspace context.",
+        "C": "Incorrect: `system.event_log` tracks infrastructure events, not detailed table-read events.",
+        "D": "Incorrect: `system.admin.jobs.runs` tracks job execution, not direct user table access."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/admin/system-tables/audit-logs"
+      ]
+    },
+    {
+      "id": 53,
+      "domain": "Cost & Performance Optimization",
+      "topic": "Materialized view incremental refresh requirements (serverless, row tracking) and full-recompute fallback",
+      "stem": "You create a materialized view on a 500 GB fact table, computing daily aggregations by region and product. You want incremental refresh (only recompute changed rows). Which two conditions must be true for incremental refresh to work, and when does it fall back to full recompute?",
+      "code": null,
+      "options": {
+        "A": "Incremental refresh requires: (1) row tracking enabled on the source table, (2) serverless SQL Warehouse. Falls back to full if source is updated outside of regular patterns.",
+        "B": "Incremental refresh requires: (1) SQL compute (not serverless), (2) CLUSTER BY on the source table. Falls back if the source table schema changes.",
+        "C": "Incremental refresh requires: (1) row tracking enabled, (2) view definition uses only SELECT/WHERE/GROUP BY. Falls back to full if the source table grows > 1 TB.",
+        "D": "Incremental refresh requires: (1) row tracking, (2) serverless compute. Falls back to full if the materialized view is dropped and recreated."
+      },
+      "answer": "A",
+      "explanation": "Incremental refresh requires row tracking (tracks which rows changed) + serverless warehouse (optimized for refresh workloads). Falls back to full recompute if source table updates violate assumptions (e.g., backdated deletes, schema changes). SQL compute is not required; row tracking is the key enabler. Schema changes can be handled; table size is not a fallback trigger. Drop/recreate does not trigger fallback; recompute is automatic on first refresh.",
+      "optExpl": {
+        "A": "Correct: Row tracking + serverless are the two requirements; falls back on unexpected source changes.",
+        "B": "Incorrect: SQL compute is not required; row tracking is the key enabler.",
+        "C": "Incorrect: Schema changes can be handled; table size is not a fallback trigger.",
+        "D": "Incorrect: Drop/recreate does not trigger fallback; recompute is automatic on first refresh."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ldp/concepts/materialized-views"
+      ]
+    },
+    {
+      "id": 54,
+      "domain": "Data Security and Compliance",
+      "topic": "Least-privilege job identity (run as service principal)",
+      "stem": "Your data pipeline runs as a Lakeflow job and must read from two tables (sales_data, customer_data) but not from a third (internal_costs). Currently, the job runs under your user identity, which has full access. How do you enforce least privilege so the job accesses only the two required tables?",
+      "code": null,
+      "options": {
+        "A": "Create a service principal with `SELECT` permission only on sales_data and customer_data; configure the Lakeflow job to run as this service principal via job ACL.",
+        "B": "Use role-based access control (RBAC); assign the job to a `data_pipeline_reader` role with SELECT on the two tables; job inherits role permissions.",
+        "C": "Create a view that selects from sales_data and customer_data; grant the job SELECT on the view only; the view enforces data access scope.",
+        "D": "Use Unity Catalog namespace isolation; put the two tables in a `public` schema, internal_costs in `private`; job identity is automatically restricted by schema."
+      },
+      "answer": "A",
+      "explanation": "Service principals with minimal object-level permissions is the least-privilege pattern. Create a dedicated service principal with SELECT only on the two tables, configure the job to run as that principal. This enforces hard boundaries. RBAC roles are coarser and do not enforce per-job least privilege. Views are a boundary, not least-privilege; job still has permissions on underlying tables if assigned. Schema isolation is too coarse; per-object permissions are required.",
+      "optExpl": {
+        "A": "Correct: Dedicated service principal with minimal object-level permissions is the least-privilege standard.",
+        "B": "Incorrect: RBAC roles are coarser; does not enforce per-job least privilege.",
+        "C": "Incorrect: Views are a boundary, not least-privilege; job still has permissions on underlying tables if assigned.",
+        "D": "Incorrect: Schema isolation is too coarse; per-object permissions are required."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/admin/users-groups/service-principals",
+        "https://docs.databricks.com/aws/en/dev-tools/auth/service-principals"
+      ]
+    },
+    {
+      "id": 55,
+      "domain": "Developing Code",
+      "topic": "Lakeflow Jobs If/else condition task based on task value",
+      "stem": "Your Lakeflow job ingests 10M customer records daily with strict SLA: 99.5% uptime, failures trigger alerts within 1 minute to Slack and PagerDuty, recovery teams must auto-retry within 30 seconds. Your data quality check task outputs a boolean (`quality_pass: true/false`). If quality passes, run downstream ingestion; if it fails, send an alert and skip ingestion without cascading failures. How do you implement this conditional logic in Lakeflow Jobs?",
+      "code": null,
+      "options": {
+        "A": "Use an If/else task type; set the condition to `tasks.quality_check.quality_pass == true`; branch to ingestion if true, alert if false.",
+        "B": "Use a Notebook task with logic: if quality_pass, trigger another job run for ingestion; else, post to Slack.",
+        "C": "Use a SQL task with a conditional INSERT/UPDATE; write results to a `job_status` table; downstream tasks poll the table.",
+        "D": "Lakeflow Jobs does not support branching; use two separate jobs and a scheduler script to run job 2 conditionally based on job 1 output."
+      },
+      "answer": "A",
+      "explanation": "Lakeflow Jobs' If/else task type evaluates a condition (e.g., output of a prior task) and routes to different downstream tasks. Incorrect approaches: using a Notebook task with external job triggering requires manual orchestration; using a SQL task with polling is inefficient; claiming Lakeflow Jobs doesn't support branching is outdated (Lakeflow Jobs supports If/else tasks).",
+      "optExpl": {
+        "A": "Correct: If/else task type is the native Lakeflow Jobs feature for conditional routing.",
+        "B": "Incorrect: Notebook + external triggering is not the built-in Lakeflow Jobs pattern.",
+        "C": "Incorrect: Polling a status table is inefficient; not how Lakeflow branching works.",
+        "D": "Incorrect: Lakeflow Jobs supports If/else tasks; no need for external scheduling."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ldp/concepts/spark-declarative-pipelines"
+      ]
+    },
+    {
+      "id": 56,
+      "domain": "Data Ingestion & Acquisition",
+      "topic": "Lakehouse Federation connection + foreign catalog with UC permissions",
+      "stem": "Your organization has a legacy Teradata data warehouse with customer data. You want to expose this data to analysts in Databricks without copying (expensive). Lakehouse Federation allows querying foreign data sources via a foreign catalog. What permissions must you set up for analysts to read the Teradata data?",
+      "code": null,
+      "options": {
+        "A": "Create a foreign catalog pointing to Teradata; grant analysts `SELECT` permission on the foreign catalog and its tables; no Teradata-side permissions needed.",
+        "B": "Create a Lakehouse Federation connection to Teradata; set up a foreign catalog; grant analysts `USE_CATALOG` + `SELECT` on tables; Teradata roles auto-map to Databricks.",
+        "C": "Create a Lakehouse Federation connection with Teradata credentials; analysts query via UC-controlled foreign catalog; Teradata permissions are checked by the connection's identity.",
+        "D": "No UC permissions needed; analysts connect directly via ODBC/JDBC gateway; Lakehouse Federation is transparent to permission model."
+      },
+      "answer": "C",
+      "explanation": "Lakehouse Federation connection authenticates to Teradata with a stored identity (e.g., service account). UC permissions control analyst access to the foreign catalog/tables. Teradata-side access is checked by the connection's identity, not each analyst. Teradata-side permissions are still enforced via the connection's identity. Teradata role auto-mapping is not part of Lakehouse Federation; UC permissions are primary. Lakehouse Federation is UC-integrated; UC permissions are mandatory.",
+      "optExpl": {
+        "A": "Incorrect: Teradata-side permissions must still be enforced via the connection's identity.",
+        "B": "Incorrect: Teradata role auto-mapping is not part of Lakehouse Federation; UC permissions are primary.",
+        "C": "Correct: Connection's identity accesses Teradata; UC permissions control analyst access to foreign catalog.",
+        "D": "Incorrect: Lakehouse Federation is UC-integrated; UC permissions are mandatory."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/query-federation/foreign-catalogs"
+      ]
+    },
+    {
+      "id": 57,
+      "domain": "Developing Code",
+      "topic": "Library installation failure on serverless (environment version / dependency conflict)",
+      "stem": "Your Lakeflow Declarative Pipeline uses a custom Python package (my_lib v2.0) that requires numpy >= 1.24. The pipeline runs on serverless default compute, which has a fixed environment. Your package conflicts with the pre-installed numpy 1.23. The pipeline fails with `ImportError: numpy version conflict`. How do you resolve this?",
+      "code": null,
+      "options": {
+        "A": "Update my_lib to support numpy 1.23; downgrading the dependency resolves conflict and avoids environment-version changes.",
+        "B": "Install numpy 1.24 at pipeline runtime using `pip install --upgrade numpy`; this forces the required version.",
+        "C": "Switch to SQL-only pipelines; serverless does not support Python with custom dependencies; use a classic cluster instead.",
+        "D": "Use a specific environment version (e.g., 15.4-GPU-ML) with newer numpy; configure the Lakeflow job to use this environment instead of default serverless."
+      },
+      "answer": "D",
+      "explanation": "Serverless default compute has a fixed, immutable environment. To use a newer numpy, specify a non-serverless environment version (e.g., single-user cluster with GPU-ML environment). Downgrading loses required features and is not sustainable. Runtime pip install fails on serverless; environment is locked. SQL-only is not a solution; Python is central to pipelines.",
+      "optExpl": {
+        "A": "Incorrect: Downgrading loses required features; not sustainable.",
+        "B": "Incorrect: Runtime pip install fails on serverless; environment is locked.",
+        "C": "Incorrect: SQL-only is not a solution; Python is central to pipelines.",
+        "D": "Correct: Use a specific, non-serverless environment version with required numpy; configure Lakeflow job to use it."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/error-messages/pipeline-environment-version-not-allowed-error-class"
+      ]
+    },
+    {
+      "id": 58,
+      "domain": "Data Manipulation",
+      "topic": "Complex aggregation with GROUPING SETS / ROLLUP / CUBE",
+      "stem": "Your analytics team queries a daily revenue table (50B rows, growing 5% weekly) at peak with 200 concurrent users. Query SLA is under 30 seconds. You need to compute aggregations at multiple levels: (1) by region, (2) by product, (3) by region + product, (4) global total. Writing four separate queries with UNION is verbose and violates SLA under load. Which SQL aggregation function computes all four levels in a single pass?",
+      "code": {
+        "lang": "sql",
+        "src": "SELECT\n  region,\n  product,\n  SUM(revenue) AS total_revenue\nFROM sales\nGROUP BY GROUPING SETS (\n  (region),\n  (product),\n  (region, product),\n  ()\n)\nORDER BY region, product"
+      },
+      "options": {
+        "A": "`GROUP BY GROUPING SETS ((region), (product), (region, product), ())`; computes all four aggregations in one pass.",
+        "B": "`GROUP BY region, product` with UNION ALL to separate aggregates; requires four separate queries.",
+        "C": "`GROUP BY ROLLUP (region, product)`; computes hierarchical aggregations: region+product, region, global.",
+        "D": "`GROUP BY CUBE (region, product)`; computes all combinations of region and product, plus global."
+      },
+      "answer": "A",
+      "explanation": "`GROUPING SETS` explicitly lists the aggregation levels you want, executing all in one pass. Incorrect approaches: using UNION requires four separate queries and is inefficient; ROLLUP is hierarchical (computes region+product, region, global but misses product-only); CUBE generates all 2^n combinations, which is redundant and less clear than GROUPING SETS for your specific four levels.",
+      "optExpl": {
+        "A": "Correct: `GROUPING SETS` with your four exact levels is efficient and clear.",
+        "B": "Incorrect: Four queries are inefficient; defeats the purpose of aggregation functions.",
+        "C": "Incorrect: `ROLLUP` is hierarchical; generates region+product, region, global (missing product-only).",
+        "D": "Incorrect: `CUBE` generates all 2^2 combinations; redundant and less clear than `GROUPING SETS` for your specific levels."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/groupingSets",
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/rollup"
+      ]
+    },
+    {
+      "id": 59,
+      "domain": "Debugging and Deploying",
+      "topic": "Driver OOM caused by `collect()` / `toPandas()` diagnosed from cluster logs",
+      "stem": "Your Lakeflow Declarative Pipeline crashes with `java.lang.OutOfMemoryError: Java heap space`. The pipeline reads 100 GB from a table, applies a filter (reducing rows by 50%), then calls `toPandas()` to return results to Python. The driver node has 16 GB RAM. Why does the crash happen and how do you diagnose it from cluster logs?",
+      "code": null,
+      "options": {
+        "A": "`toPandas()` brings all filtered rows (50 GB) into the driver's JVM heap; 50 GB > 16 GB RAM, causing OOM. Cluster logs show 'GC overhead limit exceeded' or explicit OOM on the driver.",
+        "B": "The filter operation is incorrectly distributed; 100% of rows are shipped to the driver before filtering. Cluster logs show skewed task distribution on the driver node.",
+        "C": "`toPandas()` is inefficient; use `collect()` instead to keep data in Spark. Cluster logs show no OOM; issue is Pandas serialization overhead.",
+        "D": "OOM is caused by large metadata; driver must hold all column statistics. Switch to a larger driver instance type (64 GB+) to resolve."
+      },
+      "answer": "A",
+      "explanation": "`toPandas()` deserializes all filtered rows into Python memory (50 GB DataFrame). The driver's 16 GB heap cannot fit it; OOM results. Cluster logs show GC overhead or explicit `OutOfMemoryError` on driver task. Filter is distributed; all rows are not moved to driver during filter. `collect()` has the same OOM issue; both pull all rows to driver. Larger driver is a workaround; root cause is `toPandas()` itself.",
+      "optExpl": {
+        "A": "Correct: `toPandas()` pulls all 50 GB into driver heap; 50 GB > 16 GB = OOM. Logs show driver-side OOM.",
+        "B": "Incorrect: Filter is distributed; all rows are not moved to driver during filter.",
+        "C": "Incorrect: `collect()` has the same OOM issue; both pull all rows to driver.",
+        "D": "Incorrect: Larger driver is a workaround; root cause is `toPandas()` itself."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/collect",
+        "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/toPandas"
+      ]
+    },
+    {
+      "id": 60,
+      "domain": "Developing Code",
+      "topic": "Choosing Structured Streaming vs Lakeflow Declarative Pipelines under operational constraints",
+      "stem": "Your team must build a real-time data ingestion pipeline with these constraints: (1) operational team has no PySpark experience, only SQL; (2) pipeline must auto-recover from failures without manual restarts; (3) must run 24/7 with minimal ops overhead; (4) data volume is 500k events/sec. Should you use Structured Streaming or Lakeflow Declarative Pipelines and why?",
+      "code": null,
+      "options": {
+        "A": "Structured Streaming with Python; it is powerful and flexible, suitable for 500k events/sec, but requires senior PySpark engineers.",
+        "B": "Lakeflow Declarative Pipelines with SQL; SQL-friendly, built-in fault tolerance, auto-recovery, minimal ops. Suitable for 500k events/sec if using optimized connectors.",
+        "C": "Structured Streaming on a classic cluster; better than Lakeflow for ops simplicity and fault tolerance.",
+        "D": "Lakeflow Declarative Pipelines are only for low-volume batch; use Structured Streaming for 500k events/sec."
+      },
+      "answer": "B",
+      "explanation": "Lakeflow Declarative Pipelines are SQL-native, auto-recover from failures, scale to 500k+ events/sec with optimized connectors, and minimize ops overhead. This matches all four constraints. Structured Streaming is powerful but requires PySpark expertise; Lakeflow is the operationally friendlier choice.",
+      "optExpl": {
+        "A": "Incorrect: Structured Streaming requires PySpark expertise; violates constraint 1 (ops team is SQL-only).",
+        "B": "Correct: Lakeflow is SQL-friendly, auto-recovers, handles 500k events/sec, and minimizes ops overhead.",
+        "C": "Incorrect: Structured Streaming on classic cluster still requires PySpark; not operationally simpler.",
+        "D": "Incorrect: Lakeflow scales to high-volume streaming; not just batch."
+      },
+      "refs": [
+        "https://docs.databricks.com/aws/en/ldp/concepts/spark-declarative-pipelines"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "audit": [
+    {
+      "id": 16,
+      "status": "replaced",
+      "change": "Q16: Replaced - original materialization URL doesn't cover expectation metrics. Question/answer incompatible with available docs.",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/monitor-event-logs",
+      "evidence": "Events containing information about data quality have the event type flow_progress"
+    },
+    {
+      "id": 17,
+      "status": "fixed",
+      "change": "Updated to alerts/create URL; found evidence about query result thresholds",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/user/alerts/create",
+      "evidence": "You can set an alert condition on the first value of a column in the query result or select to set an aggregation"
+    },
+    {
+      "id": 18,
+      "status": "fixed",
+      "change": "Confirmed evidence about deletion vectors avoiding file rewrites",
+      "evidence_url": "https://docs.databricks.com/aws/en/tables/features/deletion-vectors",
+      "evidence": "Without deletion vectors modifying a single row requires rewriting entire Parquet file containing that record Deletion vectors mark rows as modified"
+    },
+    {
+      "id": 19,
+      "status": "replaced",
+      "change": "Q19: Replaced - best-practices doesn't explain LC mechanism. Need different question.",
+      "evidence_url": "https://docs.databricks.com/aws/en/delta/best-practices",
+      "evidence": "Use liquid clustering to organize data at block level without explicit partitions reducing metadata overhead"
+    },
+    {
+      "id": 20,
+      "status": "fixed",
+      "change": "Predictive Optimization automatic background compute is billable",
+      "evidence_url": "https://docs.databricks.com/aws/en/optimizations/predictive-optimization",
+      "evidence": "Predictive optimization runs ANALYZE OPTIMIZE and VACUUM operations using serverless compute for Unity Catalog managed tables"
+    },
+    {
+      "id": 21,
+      "status": "fixed",
+      "change": "Skew causes partition-level variance and spilling",
+      "evidence_url": "https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/long-spark-stage",
+      "evidence": "High variance in task duration combined with spilling indicates data skew Uneven join-key distribution causes some partitions"
+    },
+    {
+      "id": 22,
+      "status": "fixed",
+      "change": "table_changes returns incremental changes since specified version",
+      "evidence_url": "https://docs.databricks.com/aws/en/tables/features/change-data-feed",
+      "evidence": "The table_changes function returns all changes inserts updates deletes since a specified version with change_type metadata"
+    },
+    {
+      "id": 23,
+      "status": "fixed",
+      "change": "ABAC: ALTER TABLE ALTER COLUMN SET TAGS applies tags to columns for masking policies",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/tutorial",
+      "evidence": "ALTER TABLE abac customers profiles ALTER COLUMN SSN SET TAGS pii ssn Create mask UDFs Apply policies matching column tags"
+    },
+    {
+      "id": 24,
+      "status": "fixed",
+      "change": "Row filter functions must return BOOLEAN using IF logic",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-row-filter",
+      "evidence": "Row filter functions must return BOOLEAN Use IF logic to return TRUE for unrestricted access or condition for filtered"
+    },
+    {
+      "id": 25,
+      "status": "fixed",
+      "change": "UC privileges don't inherit; each level requires explicit grant",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/",
+      "evidence": "USE CATALOG allows listing users need explicit USE SCHEMA on each schema and SELECT on each table to access data Privileges don't inherit"
+    },
+    {
+      "id": 26,
+      "status": "fixed",
+      "change": "Comments appear in search; tags enable filtering and are queryable",
+      "evidence_url": "https://docs.databricks.com/aws/en/comments/",
+      "evidence": "Comments appear in Databricks Search and catalog browser for discoverability Governed tags enable filtering in UI and queryable"
+    },
+    {
+      "id": 27,
+      "status": "fixed",
+      "change": "Repair Run re-executes failed job with exact same parameters",
+      "evidence_url": "https://docs.databricks.com/aws/en/jobs/run-now",
+      "evidence": "Use Repair Run in the Jobs UI to re-execute a failed run with the exact same parameters config and cluster settings"
+    },
+    {
+      "id": 28,
+      "status": "fixed",
+      "change": "databricks bundle deploy -t target deploys using target's variables",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes",
+      "evidence": "Use databricks bundle deploy -t target name to deploy using a specific target's configuration and variables"
+    },
+    {
+      "id": 29,
+      "status": "fixed",
+      "change": "Spilling with task variance indicates data skew not cluster-wide memory",
+      "evidence_url": "https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/long-spark-stage",
+      "evidence": "Task spilling combined with high variance in duration indicates partition-level data skew Investigate join keys for nulls and hot keys"
+    },
+    {
+      "id": 30,
+      "status": "fixed",
+      "change": "MVs pre-aggregate facts/dimensions for performance; metric views provide governance",
+      "evidence_url": "https://docs.databricks.com/aws/en/ldp/concepts/materialized-views",
+      "evidence": "Materialized views pre-aggregate fact and dimension joins for performance Metric views provide governance and versioned measures on top"
+    }
+  ]
+}

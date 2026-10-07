@@ -1,0 +1,376 @@
+{
+ "questions": [
+  {
+   "id": 16,
+   "domain": "Monitoring and Alerting",
+   "topic": "Data quality from pipeline event_log() table-valued function",
+   "stem": "You have a Lakeflow Declarative Pipeline ingesting data with multiple stages (bronze → silver → gold). A stage is failing silently—records are not reaching the next stage, but no error is logged. You want to identify which stage is losing records. What should you query?",
+   "code": {
+    "lang": "sql",
+    "src": "SELECT \n  event_type,\n  details.table_name,\n  details.num_added_rows,\n  details.num_deleted_rows,\n  details.num_updated_rows,\n  timestamp\nFROM event_log()\nWHERE event_type = 'FLOW_PROGRESS'\n  AND pipeline_id = '<your-pipeline-id>'\nORDER BY timestamp DESC\nLIMIT 100"
+   },
+   "options": {
+    "A": "Run `SHOW TBLPROPERTIES` on each table to check `delta.lastModifiedTime` and count rows manually",
+    "B": "Query `system.access.query_history` for all SQL queries in the pipeline; count rows before/after each stage",
+    "C": "Query `event_log()` TVF for the pipeline; filter on `event_type = 'FLOW_PROGRESS'` to track record counts per stage",
+    "D": "Query `system.pipeline.lineage_events` to track schema changes; data loss is usually caused by schema mismatches"
+   },
+   "answer": "C",
+   "explanation": "correct: Lakeflow Declarative Pipelines emit `FLOW_PROGRESS` events that track record counts and table updates. The `event_log()` TVF provides detailed visibility into which stage is losing records. queries SQL history but doesn't capture pipeline-specific metrics. manual and slow. conflates schema changes with data loss—they are separate issues.",
+   "optExpl": {
+    "A": "Incorrect: Manual table inspection is slow and doesn't show stage-by-stage record flow.",
+    "B": "Incorrect: SQL query history doesn't capture pipeline-specific metrics like record count transitions.",
+    "C": "Correct: `event_log()` with `FLOW_PROGRESS` events tracks record counts through each pipeline stage.",
+    "D": "Incorrect: Schema mismatches would cause errors, not silent data loss; `event_log()` is better for record-count tracking."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/"
+   ]
+  },
+  {
+   "id": 17,
+   "domain": "Monitoring and Alerting",
+   "topic": "Job health rules and duration-threshold notifications",
+   "stem": "You have a critical ETL job that normally completes in 30 minutes. Recently, it sometimes takes 45 minutes without failing. You want to alert the team if the job's p95 duration exceeds 40 minutes over the last 7 days, but not for single-run spikes. Which feature should you use?",
+   "code": null,
+   "options": {
+    "A": "Create a job alert in the Databricks UI for `Duration > 40 min`; it will fire on every run that exceeds 40 minutes",
+    "B": "Query `system.jobs.job_runs` with a 7-day window; calculate p95 duration; set up a Lakeflow job to run this daily and publish alerts",
+    "C": "Add a task-level timeout in the job definition; the job will auto-fail if it runs >40 min; track failures in a dashboard",
+    "D": "Use Databricks Job Health Rules to track p95 duration over a rolling 7-day window; alert when threshold is exceeded"
+   },
+   "answer": "D",
+   "explanation": "Databricks Job Health Rules track historical percentile metrics (such as p95 duration) over a rolling window and alert only when the trend crosses the threshold, not on every spike. Alerting on single spikes generates too many false positives, and task timeouts are a job-failure mechanism rather than a monitoring alert.",
+   "optExpl": {
+    "A": "Incorrect: Simple duration alerts fire on every run that exceeds the threshold, causing alert fatigue from single spikes.",
+    "B": "Incorrect: A manual query-based alerting job is operationally complex and loses the benefits of built-in health rules.",
+    "C": "Incorrect: Task timeouts cause job failures, not monitoring alerts; doesn't differentiate between spikes and trends.",
+    "D": "Correct: Job Health Rules track p95 duration over a rolling window, alerting only on sustained trend changes."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/jobs"
+   ]
+  },
+  {
+   "id": 18,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Photon performance-optimized vs standard mode choice",
+   "stem": "Your team runs a 500 GB fact table join against a 10 GB dimension table 10 times per day. The query uses Photon-enabled SQL warehouse (reserved capacity). Photon speeds up the join by 3x but adds 20% to compute cost. Without Photon, the query takes 2 minutes. Your warehouse idle time is 60%. Should you use Photon?",
+   "code": {
+    "lang": "sql",
+    "src": "-- Query execution analysis\n-- Standard mode: 2 min per query × 10 queries = 20 min total\n-- Photon mode: 40 sec per query × 10 queries = 6.7 min total\n\n-- With 60% idle capacity (already paid for):\n-- Total warehouse \"occupied\" time reduced from 20 min to 6.7 min\n-- Other jobs can start sooner, reducing queue time\n-- 20% compute cost increase << benefit of freed capacity"
+   },
+   "options": {
+    "A": "No, because idle time (60%) is high; you're already paying for capacity and should use standard mode to save 20% compute cost",
+    "B": "Yes, because the 3x speedup saves query time; the 20% cost increase is offset by less total warehouse uptime",
+    "C": "Only during peak hours; switch to standard mode during off-peak to reduce cost",
+    "D": "Yes, Photon always reduces total cost; the speedup compounds across all queries throughout the day"
+   },
+   "answer": "B",
+   "explanation": "correct: with 60% idle time, your reserved capacity is already paid for. Using Photon to reduce query time from 2 min to 40 sec (3x speedup) returns the warehouse to idle faster, allowing the next job to start sooner and reducing overall job queue time. The 20% compute increase is negligible since capacity is reserved. ignores the benefit of faster query completion in a shared system. adds operational complexity. too absolutist—Photon doesn't always reduce cost without considering idle capacity.",
+   "optExpl": {
+    "A": "Incorrect: With 60% idle capacity already paid, Photon speedup reduces queue time and improves throughput more than cost.",
+    "B": "Correct: Reserved capacity is fixed-cost; Photon's 3x speedup reduces query time and frees capacity for other jobs.",
+    "C": "Incorrect: Toggling Photon mode adds operational overhead; reserved capacity cost is fixed regardless of mode.",
+    "D": "Incorrect: Photon reduces cost in shared systems but not universally; depends on idle capacity and job concurrency."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/compute/photon"
+   ]
+  },
+  {
+   "id": 19,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Data skipping statistics columns (delta.dataSkippingNumIndexedCols)",
+   "stem": "Your data team manages a 10 TB table partitioned by date and clustered by user_id. Queries often filter on `user_id` and `date`, but data skipping is not aggressive enough—Spark still scans 30% of files even after filtering. You want to reduce scans to <5% without repartitioning. What should you configure?",
+   "code": null,
+   "options": {
+    "A": "Reduce `delta.dataSkippingNumIndexedCols` to 1 (only date); Spark will skip more aggressively on that column",
+    "B": "Disable data skipping; use explicit filtering in your query instead (e.g., `WHERE user_id IN (SELECT ... FROM ref)`)",
+    "C": "Increase `delta.dataSkippingNumIndexedCols` from default 32 to 64; ensure `user_id` is in `delta.dataSkippingStatsColumns`",
+    "D": "Increase `delta.dataSkippingNumIndexedCols` to index more columns; reduce `delta.dataSkippingStatsColumns` to only critical fields"
+   },
+   "answer": "C",
+   "explanation": "correct: increasing the indexed columns (up to 64) and ensuring `user_id` is in the skipping columns list improves filter selectivity on both partitioning and clustering dimensions. reduces coverage. disables the optimization. contradicts the goal. Data skipping stats are checked at file-level granularity; more indexed columns = better pruning.",
+   "optExpl": {
+    "A": "Incorrect: Fewer indexed columns reduces skipping coverage; you'd skip on date but not user_id.",
+    "B": "Incorrect: Explicit filtering in SQL doesn't replace file-level data skipping statistics.",
+    "C": "Correct: More indexed columns + ensuring both `date` and `user_id` are tracked improve file skipping selectivity.",
+    "D": "Incorrect: Increasing indexed columns and simultaneously reducing stats columns contradicts the optimization goal."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize"
+   ]
+  },
+  {
+   "id": 20,
+   "domain": "Cost & Performance Optimization",
+   "topic": "Partition or file pruning defeated by function on filter column",
+   "stem": "Your fact table contains 10 years of data, partitioned by `date_col` (YYYY-MM-DD). Your analytics team regularly runs a report that filters: `WHERE YEAR(date_col) = 2024`. Query performance is poor—partition pruning is disabled, and Spark scans all 120+ partition directories instead of just 12 monthly partitions. What prevents partition elimination, and how should the query be rewritten?",
+   "code": {
+    "lang": "sql",
+    "src": "-- WRONG: Function on partition column disables pruning\nWHERE YEAR(date_col) = 2024;  -- Scans all partitions\n\n-- CORRECT: Range filter enables pruning\nWHERE date_col >= '2024-01-01' \n  AND date_col < '2025-01-01';  -- Prunes 11/12 partitions\n\n-- Spark's pruner evaluates partition bounds directly\n-- Functions prevent direct comparison with partition key"
+   },
+   "options": {
+    "A": "The partition column must match the filter column exactly; add an indexed column `year_partition` alongside `date_col`",
+    "B": "Spark doesn't recognize date column types; change the partition column to an integer (e.g., `year_int`)",
+    "C": "Partition pruning is disabled by default; set `spark.sql.optimizer.enablePartitionPruning = true`",
+    "D": "The YEAR() function prevents partition elimination; rewrite to `WHERE date_col >= '2024-01-01' AND date_col < '2025-01-01'`"
+   },
+   "answer": "D",
+   "explanation": "correct: functions like `YEAR(date_col)` prevent Spark's partition pruner from evaluating the partition key directly. Rewriting as a range filter (`date_col >= '2024-01-01' AND date_col < '2025-01-01'`) allows Spark to prune partitions before scanning. requires schema changes unnecessarily. true by default in modern Spark. adds unnecessary duplication.",
+   "optExpl": {
+    "A": "Incorrect: Adding a separate partition column doubles storage and complicates maintenance.",
+    "B": "Incorrect: Spark handles date types correctly; the issue is the function, not the data type.",
+    "C": "Incorrect: Partition pruning is enabled by default; the real issue is the YEAR() function.",
+    "D": "Correct: Functions on partition columns defeat pruning; rewrite as range filters to enable partition elimination."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize"
+   ]
+  },
+  {
+   "id": 21,
+   "domain": "Cost & Performance Optimization",
+   "topic": "AQE skew join handling",
+   "stem": "Your query joins a skewed fact table (90% of rows have `category_id = 1`) to a dimension table. Without Adaptive Query Execution (AQE), the join is slow and unbalanced—one executor handles 90% of data while others idle. Enabling AQE helps, but you need finer control. What should you configure?",
+   "code": null,
+   "options": {
+    "A": "Enable AQE; trust the defaults; no manual configuration needed for skew join optimization",
+    "B": "Disable AQE; add a Salt column to the fact table (`category_id + RAND() % 10`) before the join to distribute skewed keys",
+    "C": "Enable AQE; set `spark.sql.adaptive.skewJoin.enabled = true` and adjust `spark.sql.adaptive.skewJoin.skewFactor` to 2x (default is 5x)",
+    "D": "Use a broadcast join; force the dimension table to broadcast even if it's larger than the threshold"
+   },
+   "answer": "C",
+   "explanation": "correct: with AQE enabled, you can fine-tune skew join handling. A lower `skewJoin.skewFactor` (2x instead of 5x) detects skew more aggressively and splits skewed partitions earlier. a manual salt workaround that AQE makes unnecessary. relies on defaults, which may not detect the 90% skew. (broadcast) only works if the dimension fits in memory and doesn't scale.",
+   "optExpl": {
+    "A": "Incorrect: Default skewFactor (5x) may not detect 90% skew; manual tuning improves sensitivity.",
+    "B": "Incorrect: Manual salting works but adds query logic; AQE's automatic skew detection is simpler.",
+    "C": "Correct: AQE + lower skewFactor (2x) detects the 90% skew and splits partitions for better balance.",
+    "D": "Incorrect: Broadcast join requires the dimension to fit in memory; doesn't scale with large dimensions."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize"
+   ]
+  },
+  {
+   "id": 22,
+   "domain": "Cost & Performance Optimization",
+   "topic": "OPTIMIZE with Liquid Clustering vs auto clustering",
+   "stem": "Your 100 GB user events table is clustered with Liquid Clustering on `user_id` for fast lookups by user. Over a week of high-volume data ingestion, 10 GB of append-only data has been added (with existing user_id values from prior records). Queries filtering by user_id have become noticeably slow due to data fragmentation. Your team must improve query latency quickly. Should you run `OPTIMIZE` immediately or rely on auto-clustering?",
+   "code": null,
+   "options": {
+    "A": "Rely on auto-clustering; it runs automatically for Liquid Clustering tables and will optimize overnight",
+    "B": "Neither OPTIMIZE nor auto-clustering helps append-only data; partitioning by date is required for performance",
+    "C": "Run `OPTIMIZE ZORDER BY user_id`; this reorders the table for better locality",
+    "D": "Run `OPTIMIZE` immediately; it compacts small files and respects Liquid Clustering ordering, improving query speed"
+   },
+   "answer": "D",
+   "explanation": "Run OPTIMIZE immediately on Liquid Clustering tables to compact small files and improve query speed. Liquid Clustering automatically applies clustering to newly appended data, so OPTIMIZE respects the existing clustering order. Auto-clustering runs on a schedule and cannot provide immediate relief. ZORDER is legacy; Liquid Clustering + OPTIMIZE is the modern approach.",
+   "optExpl": {
+    "A": "Auto-clustering relies on scheduling, not immediate performance improvement.",
+    "B": "Liquid Clustering handles append-only data efficiently; partitioning is not required.",
+    "C": "ZORDER is legacy; Liquid Clustering + OPTIMIZE is the modern, simpler approach.",
+    "D": "Correct: OPTIMIZE compacts files and respects Liquid Clustering ordering for append-only data."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/clustering"
+   ]
+  },
+  {
+   "id": 23,
+   "domain": "Data Security and Compliance",
+   "topic": "ABAC row-filter policy driven by governed tag",
+   "stem": "Your organization has a customer table with PII (email, phone). Data governance requires that only users with a `data_domain=sales` governed tag can see rows where `department = 'sales'`. Other rows should be hidden. You want to enforce this at the catalog level without per-user access lists. Which approach is correct?",
+   "code": null,
+   "options": {
+    "A": "Use dynamic SQL rewrite: intercept SELECT statements and inject WHERE department = current_user() filtering",
+    "B": "Create a view that filters `WHERE department = user_attribute('data_domain')`; grant SELECT on the view to all users",
+    "C": "Create separate tables per department; grant access via Unity Catalog privileges (TABLE_READ) per role",
+    "D": "Use ABAC row-filter policy: if user has `data_domain=sales` tag, allow `department = 'sales'` rows; else, hide all rows"
+   },
+   "answer": "D",
+   "explanation": "Attribute-Based Access Control (ABAC) row-filter policies are purpose-built for dynamic row-level access based on governed tags. The policy engine evaluates user tags at query time and returns only matching rows, enforcing rules like 'if user has data_domain=sales tag, show department=sales rows'. Views with user_attribute() are a workaround; native ABAC policies are more robust and scalable. Table duplication breaks data consolidation. Dynamic SQL rewriting is complex and error-prone.",
+   "optExpl": {
+    "A": "Dynamic SQL rewrite is complex and error-prone; ABAC policies are the standard approach.",
+    "B": "Views with user_attribute() are a workaround; native ABAC policies are more robust and scalable.",
+    "C": "Table duplication per department breaks data consolidation and increases maintenance.",
+    "D": "Correct: ABAC row-filter policies link governed tags to row filters, enforcing access at query time."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/policies"
+   ]
+  },
+  {
+   "id": 24,
+   "domain": "Data Security and Compliance",
+   "topic": "Tokenization vs hashing vs generalization for re-identification risk",
+   "stem": "You have a dataset of medical records with patient names, ages, and diagnoses. You need to share this with a research partner but minimize re-identification risk. The partner needs to correlate patients across files by a stable identifier. Hashing the name works but is reversible if the hash function is known. What is the best approach?",
+   "code": null,
+   "options": {
+    "A": "Use hashing with a salt; the partner cannot reverse it without the salt, and you control the salt",
+    "B": "Encrypt the names; share the encryption key encrypted; the partner can decrypt locally but cannot re-encrypt for future files",
+    "C": "Use tokenization: replace names with opaque tokens; store the mapping in a secure key-value store you control; issue tokens to the partner",
+    "D": "Generalize the data: round ages to 5-year bands, redact diagnosis details; this reduces re-identification but loses detail"
+   },
+   "answer": "C",
+   "explanation": "Tokenization provides an opaque, stable identifier (tokens can be reused per patient across files for correlation) while keeping the mapping (name → token) in a secure store you control. The research partner never sees names or the mapping. Salted hashing is deterministic but potentially reversible with sufficient compute; tokenization is more opaque. Encryption is not de-identification; re-identification risk remains if the mapping is exposed. Generalization reduces re-identification risk but doesn't provide the stable cross-file identifier needed for correlation.",
+   "optExpl": {
+    "A": "Salted hashes are deterministic but potentially reversible with sufficient compute; tokenization is more opaque.",
+    "B": "Encryption is not de-identification; it's data confidentiality. Re-identification risk remains if mapping is exposed.",
+    "C": "Correct: Tokenization provides stable identifiers for correlation while keeping the mapping private.",
+    "D": "Generalization reduces re-identification risk but doesn't provide the stable cross-file identifier needed."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/privileges-reference"
+   ]
+  },
+  {
+   "id": 25,
+   "domain": "Data Governance",
+   "topic": "BROWSE privilege and data discovery",
+   "stem": "Your data governance team is setting up Unity Catalog access for a new data engineering team. The team needs to explore and discover what data assets exist in the organization (browse catalogs, schemas, and tables) to understand the data landscape and find relevant tables for their projects. However, they should not see actual table data until they request explicit access per table. You want to grant the minimal privilege sufficient for discovery. What privilege should you grant?",
+   "code": null,
+   "options": {
+    "A": "BROWSE privilege on the metastore; data engineers can discover all objects without query access",
+    "B": "SELECT privilege with a row filter that returns zero rows; they can query but see no data",
+    "C": "Read Metadata privilege on the catalog; limited to object names and column types, not data",
+    "D": "USAGE privilege on the catalog and schema; data engineers can see structure but not data"
+   },
+   "answer": "A",
+   "explanation": "BROWSE privilege allows data engineers to traverse the catalog hierarchy and discover objects (catalogs, schemas, tables, columns) without granting query access. This is the minimal privilege for data discovery. USAGE on schema/catalog also works but is less explicit about the discovery intent. Granting SELECT (even with zero rows) grants query capability, exceeding the minimum requirement. Read Metadata is similar to BROWSE but BROWSE is the standard term in Unity Catalog.",
+   "optExpl": {
+    "A": "Correct: BROWSE privilege provides catalog navigation and discovery without query access.",
+    "B": "Granting SELECT (even with zero rows) grants query capability, exceeding discovery needs.",
+    "C": "Read Metadata is similar but less standard; BROWSE is the Unity Catalog term for discovery.",
+    "D": "USAGE allows object creation/modification; BROWSE is more minimal for discovery-only."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/privileges-reference"
+   ]
+  },
+  {
+   "id": 26,
+   "domain": "Data Governance",
+   "topic": "Governed tags vs regular tags for compliance",
+   "stem": "Your compliance team requires a data classification scheme: `PII=true/false` and `Sensitivity=high/medium/low`. Governed tags must be managed by the compliance team, and any table not tagged should be treated as PII. Regular tags are optional and can be added by any user. Which tagging approach enforces compliance requirements?",
+   "code": null,
+   "options": {
+    "A": "Use regular tags for classification dimensions; rely on a dashboard to track untagged tables as PII",
+    "B": "Use governed tags for each dimension; require tags at table creation; set default values to PII=true and Sensitivity=high",
+    "C": "Use governed tags for PII only (required, managed by compliance team); regular tags for Sensitivity (optional, user-managed)",
+    "D": "Use regular tags with automation: a Lakeflow job runs daily, tags all untagged tables as PII=true and Sensitivity=high"
+   },
+   "answer": "B",
+   "explanation": "Governed tags enforce mandatory classification with compliance-controlled values and strict management by the compliance team. By making tags mandatory and governing their allowed values, any table must be explicitly tagged with PII and Sensitivity classifications, meeting the compliance requirement. Regular tags are optional and cannot enforce classification. Mixing governed and regular tags reduces governance clarity. Automation is reactive; untagged tables could be accessed before automation runs.",
+   "optExpl": {
+    "A": "Regular tags are optional; untagged tables would not be automatically classified as PII.",
+    "B": "Correct: Governed tags enforce mandatory classification with compliance-controlled values and strict management.",
+    "C": "Mixing governed and regular tags reduces governance clarity and doesn't enforce the Sensitivity dimension.",
+    "D": "Automated tagging is reactive; untagged tables could be accessed before automation runs."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/governed-tags/manage-governed-tags"
+   ]
+  },
+  {
+   "id": 27,
+   "domain": "Debugging and Deploying",
+   "topic": "databricks bundle validate / deploy error from missing variable",
+   "stem": "Your Declarative Automation Bundle defines a job with variable `${var.catalog_name}`. When you run `databricks bundle validate`, it passes. When you run `databricks bundle deploy`, it fails: `Variable 'catalog_name' is not defined`. The variable is not in the bundle YAML. What is the root cause, and how do you fix it?",
+   "code": {
+    "lang": "yaml",
+    "src": "targets:\n  dev:\n    variables:\n      catalog_name: \"dev_catalog\"\n  prod:\n    # Missing catalog_name variable\n\nvariables:\n  catalog_name:\n    description: \"Target catalog\""
+   },
+   "options": {
+    "A": "The prod target is missing the `catalog_name` variable definition; add it to the prod target",
+    "B": "Run `databricks bundle validate --target prod` to catch this error earlier; it's a validation-time issue",
+    "C": "The variable must be set via environment variables (e.g., `DATABRICKS_VAR_CATALOG_NAME`) before deploy",
+    "D": "Use `--auto-approve` flag in deploy to skip variable validation"
+   },
+   "answer": "A",
+   "explanation": "correct: the prod target is missing the `catalog_name` variable. Validate passes because variables are optional in the schema, but deploy fails because the prod target uses `${var.catalog_name}` without defining it. Adding the variable to the prod target fixes it. a good practice but doesn't solve the root cause. would be a workaround but not the intended design. skips validation, hiding the real issue.",
+   "optExpl": {
+    "A": "Correct: The prod target lacks the `catalog_name` variable definition; adding it fixes the deploy error.",
+    "B": "Incorrect: `validate --target prod` would catch this, but it doesn't explain the root cause.",
+    "C": "Incorrect: Environment variables are a fallback; the bundle should define variables per target.",
+    "D": "Incorrect: `--auto-approve` skips approval steps, not validation; it would not fix the missing variable."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/pipelines-tutorial"
+   ]
+  },
+  {
+   "id": 28,
+   "domain": "Debugging and Deploying",
+   "topic": "Task retries vs repair run for re-running failed tasks",
+   "stem": "A long-running pipeline with 10 sequential tasks failed on task 7 (after 2 hours of execution). You want to re-run only tasks 7–10 without re-running tasks 1–6. You have two options: (1) re-run the job with retries enabled, or (2) submit a repair run. Which approach is most efficient?",
+   "code": null,
+   "options": {
+    "A": "Manually trigger a new job run; configure the job to skip tasks 1–6 via a conditional flag",
+    "B": "Restart from a checkpoint saved after task 6; recovery requires checkpoint support in all tasks",
+    "C": "Use task retries; the job will retry task 7 and continue to task 10 without re-running tasks 1–6",
+    "D": "Submit a repair run; Databricks will re-run only failed tasks (task 7) and dependent downstream tasks (8–10)"
+   },
+   "answer": "D",
+   "explanation": "correct: repair runs are designed for exactly this—they re-run only failed tasks and their downstream dependencies, skipping already-successful tasks. requires manual conditional logic in each task. requires checkpoint infrastructure that may not exist. (task retries) retries the failed task but typically within a single attempt, not for re-running downstream tasks.",
+   "optExpl": {
+    "A": "Incorrect: Conditional skipping in SQL/Python is error-prone and manual; repair runs are the standard approach.",
+    "B": "Incorrect: Repair runs don't require checkpoints; they track task success/failure in the job run metadata.",
+    "C": "Incorrect: Task retries retry a single task; they don't skip successful upstream tasks.",
+    "D": "Correct: Repair runs re-run only failed tasks (task 7) and downstream dependents (8–10), skipping 1–6."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/jobs/repair-job-failures"
+   ]
+  },
+  {
+   "id": 29,
+   "domain": "Debugging and Deploying",
+   "topic": "Query profile showing spill to disk and the right fix",
+   "stem": "You run a query and notice in the Spark query profile that the `SortExec` operator spilled 500 GB to disk while sorting a 2 GB result set. The query takes 15 minutes (vs. expected 1 minute). Your cluster has 128 GB RAM total. What is the root cause and fix?",
+   "code": null,
+   "options": {
+    "A": "The SortExec is using more RAM than available; increase executor memory to 256 GB per executor",
+    "B": "Insufficient executor memory for the sort buffer; add executors to the cluster (horizontal scaling)",
+    "C": "Too many partitions; use `repartition(10)` before the sort to reduce memory pressure",
+    "D": "The sort key has high cardinality, causing unbalanced partitions; add a salt column to redistribute data"
+   },
+   "answer": "C",
+   "explanation": "correct: excessive partitions cause each partition to be sorted independently in memory. With 2 GB output across many partitions, each executor's sort buffer fills up, forcing spill. Repartitioning to fewer partitions (e.g., 10) allows each partition to be larger and fit in memory per executor. assumes insufficient executor memory (usually 50+ GB per executor in modern clusters). (horizontal scaling) doesn't reduce per-partition memory use. (salt) addresses skew, not partitioning pressure.",
+   "optExpl": {
+    "A": "Incorrect: 128 GB cluster RAM is sufficient for a 2 GB sort; memory pressure is usually from high partitions.",
+    "B": "Incorrect: Adding executors doesn't reduce per-partition memory; each executor sorts its assigned partitions independently.",
+    "C": "Correct: Too many partitions cause per-partition sorts to spill; fewer partitions fit more data per partition in memory.",
+    "D": "Incorrect: Salt columns are for addressing skew, not spill-to-disk from partitioning."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/user/queries/query-profile"
+   ]
+  },
+  {
+   "id": 30,
+   "domain": "Data Modeling",
+   "topic": "Event table layout: partition by date vs Liquid Clustering",
+   "stem": "Your event table contains 500 billion immutable events (append-only). Events have a timestamp, user_id, and event_type. Queries commonly filter on (1) date ranges (95% of queries) and (2) user_id (50% of queries). You are choosing between partitioning by `date` or using Liquid Clustering on `(date, user_id)`. Which is better for cost and performance?",
+   "code": null,
+   "options": {
+    "A": "Partition by date; this allows partition pruning for 95% of queries and minimizes file count per partition",
+    "B": "Use Liquid Clustering on (date, user_id); this automatically clusters across multiple dimensions and handles append-only efficiently",
+    "C": "Partition by date AND use Liquid Clustering on user_id; dual-layering maximizes pruning coverage",
+    "D": "Neither; use a Lakebase aggregate table indexed on (date, user_id); queries should hit the aggregate instead"
+   },
+   "answer": "B",
+   "explanation": "Liquid Clustering on (date, user_id) handles both common filter dimensions efficiently without manual partitioning, automatically clustering new appends and avoiding partition maintenance and small-file issues. Date-only partition pruning misses the user_id filter, combining partitioning with clustering adds dual-layer management complexity, and a pre-aggregated table helps aggregations but not row-level event lookups.",
+   "optExpl": {
+    "A": "Incorrect: Partitioning only on date helps with 95% of queries but not user_id filters; Liquid Clustering is more flexible.",
+    "B": "Correct: Liquid Clustering on both dimensions handles both query patterns and auto-clusters appends efficiently.",
+    "C": "Incorrect: Partition + Liquid Clustering adds maintenance; Liquid Clustering alone is sufficient and simpler.",
+    "D": "Incorrect: Aggregate tables are for pre-computed metrics, not row-level event queries."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/clustering"
+   ]
+  }
+ ]
+}

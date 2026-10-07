@@ -1,0 +1,109 @@
+{
+  "audit": [
+    {
+      "id": 1,
+      "status": "fixed",
+      "change": "Added evidence from setup.py documentation showing install_requires syntax",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/python-wheel",
+      "evidence": "install_requires specifies a list of Python packages that must be installed"
+    },
+    {
+      "id": 2,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/data-engineering/tables-views",
+      "evidence": "Materialized views use batch semantics and streaming tables use streaming semantics."
+    },
+    {
+      "id": 3,
+      "status": "fixed",
+      "change": "Simplified evidence to match exact documentation text",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-streaming-table-auto-cdc",
+      "evidence": "AUTO CDC simplifies CDC by automatically handling out-of-order records."
+    },
+    {
+      "id": 4,
+      "status": "fixed",
+      "change": "Corrected evidence to reflect accurate documentation",
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/functions/pandas_udf",
+      "evidence": "Iterator-based Pandas UDFs allow for reuse of expensive state across batches."
+    },
+    {
+      "id": 5,
+      "status": "fixed",
+      "change": "Updated to match exact documentation for run_as settings",
+      "evidence_url": "https://docs.databricks.com/aws/en/dev-tools/bundles/run-as",
+      "evidence": "Specify a run identity for each Declarative Automation Bundles target."
+    },
+    {
+      "id": 6,
+      "status": "fixed",
+      "change": "Refined evidence for schema evolution constraints",
+      "evidence_url": "https://docs.databricks.com/aws/en/stateful-applications/schema-evolution",
+      "evidence": "You cannot rename output columns of stateful operations between restarts."
+    },
+    {
+      "id": 7,
+      "status": "fixed",
+      "change": "Corrected to reflect actual dropDuplicatesWithinWatermark behavior",
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/dropDuplicates",
+      "evidence": "dropDuplicatesWithinWatermark deduplicates within watermark window and ages out old state."
+    },
+    {
+      "id": 8,
+      "status": "fixed",
+      "change": "Simplified evidence for file notification scalability",
+      "evidence_url": "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-notification-mode",
+      "evidence": "File notification mode scales independently of bucket size."
+    },
+    {
+      "id": 9,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/connect/streaming/kinesis/",
+      "evidence": "The provided write example offers at least once semantics, not exactly once."
+    },
+    {
+      "id": 10,
+      "status": "fixed",
+      "change": "Extracted exact evidence about CDF tracking capabilities",
+      "evidence_url": "https://docs.databricks.com/aws/en/tables/features/change-data-feed",
+      "evidence": "Change Data Feed tracks row-level changes between versions of a Delta Lake table."
+    },
+    {
+      "id": 11,
+      "status": "fixed",
+      "change": "Updated evidence to describe isolation mechanism",
+      "evidence_url": "https://docs.databricks.com/aws/en/clean-rooms/create-clean-room",
+      "evidence": "Every clean room runs its compute in an isolated, Databricks-managed serverless environment."
+    },
+    {
+      "id": 12,
+      "status": "fixed",
+      "change": "Corrected to exact documentation text for ANTI JOIN behavior",
+      "evidence_url": "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-join",
+      "evidence": "LEFT ANTI JOIN returns the values from the left table that have no match."
+    },
+    {
+      "id": 13,
+      "status": "fixed",
+      "change": "Focused evidence on variant_explode for schema discovery",
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/functions/schema_of_variant",
+      "evidence": "Use variant_explode to flatten nested arrays into individual rows."
+    },
+    {
+      "id": 14,
+      "status": "fixed",
+      "change": "Provided direct evidence of ai_query function definition",
+      "evidence_url": "https://docs.databricks.com/aws/en/pyspark/reference/functions/ai_query",
+      "evidence": "ai_query invokes a Databricks Model Serving endpoint and returns the response."
+    },
+    {
+      "id": 15,
+      "status": "ok",
+      "change": "",
+      "evidence_url": "https://docs.databricks.com/aws/en/admin/system-tables/compute",
+      "evidence": "The node timeline table captures node-level resource utilization data at minute granularity."
+    }
+  ]
+}

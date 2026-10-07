@@ -1,0 +1,390 @@
+{
+ "questions": [
+  {
+   "id": 1,
+   "domain": "Developing Code",
+   "topic": "Declarative Automation Bundles project layout",
+   "stem": "Your team is building a reusable data pipeline using Declarative Automation Bundles (DAB) that will be deployed across 12 regional workspaces. The pipeline includes shared utility functions (data validation, error handling) used by multiple jobs, and each region has region-specific configuration. You want to minimize maintenance overhead by packaging shared code once and reusing it in all deployments. Which approach best satisfies this requirement while keeping the bundle structure maintainable?",
+   "code": null,
+   "options": {
+    "A": "Copy the shared modules into each region's folder, store them in a Databricks workspace folder as git files, and reference them via `%run` in each job notebook.",
+    "B": "Package shared code as a Databricks App and deploy it as a dependency; configure each job to import the app as a library reference in the job's requirements.",
+    "C": "Store all shared functions in a single SQL UDF in the metastore, then create workspace-level permissions so all jobs can reference it directly without importing.",
+    "D": "Create a Python wheel containing shared modules, reference it in `databricks.yml` via `artifact.libraries`, and use `targets` with region-specific variables to override configuration per deployment."
+   },
+   "answer": "D",
+   "explanation": "DAB supports packaging Python code as a wheel artifact and referencing it via `artifact.libraries` to enable code reuse across deployments. Using `targets` and variables allows region-specific config without duplicating code. the second approach relies on git files (fragile and hard to maintain at scale), the third approach treats apps as a deployment unit (not a code dependency), and the fourth approach limits logic to SQL-only and creates tight coupling.",
+   "optExpl": {
+    "A": "Incorrect: Copying code across regions violates DRY and scales poorly.",
+    "B": "Incorrect: Databricks Apps are not designed as code dependency packages.",
+    "C": "Incorrect: SQL UDFs alone cannot express the full utility logic, and metastore-level sharing doesn't scale operationally.",
+    "D": "Correct: This pattern enables code reuse via wheel artifacts and targets, reducing maintenance overhead."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/artifact-private",
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/library-dependencies"
+   ]
+  },
+  {
+   "id": 2,
+   "domain": "Developing Code",
+   "topic": "Pandas UDF vs SQL UC function choice",
+   "stem": "Your data platform team is adding a new transformation function to compute a rolling risk score from trading activity. The function must (1) be callable from both PySpark and SQL queries, (2) be governed via Unity Catalog with consistent versioning and audit trails, (3) execute efficiently on serverless compute with no external dependencies, and (4) allow analysts to update the business logic without redeploying infrastructure. Which option best meets all four constraints?",
+   "code": null,
+   "options": {
+    "A": "Pandas UDF, because it supports both PySpark and SQL via `register_pandas_udf()` and integrates with UC for versioning.",
+    "B": "SQL function at the metastore level, wrapped in a Python UDF to expose it to PySpark; this provides full governance.",
+    "C": "Pandas UDF, because vectorization offers better performance than SQL UDFs on serverless compute.",
+    "D": "SQL function in UC, because it satisfies all constraints: governance, no external deps, dual-language access, and analyst-driven updates."
+   },
+   "answer": "D",
+   "explanation": "A SQL UC function meets all constraints: it's governed by UC with audit trails and versioning, callable from both SQL and PySpark (via `spark.sql()`), requires no external dependencies, and analysts can update it independently. Pandas UDFs require Python serialization overhead, external dependencies (PyArrow), and don't scale well on serverless. the second approach is the constraint-satisfying answer.",
+   "optExpl": {
+    "A": "Incorrect: Pandas UDFs require Python environments and dependencies, violating serverless and no-external-deps constraints.",
+    "B": "Incorrect: Adding an unnecessary Python wrapper defeats the purpose and reintroduces complexity.",
+    "C": "Incorrect: Vectorization gains don't apply uniformly; SQL is often faster on serverless for simple transformations.",
+    "D": "Correct: SQL UC functions satisfy governance, cross-language access, serverless compatibility, and independent updates."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/pyspark/reference/functions/pandas_udf",
+    "https://docs.databricks.com/aws/en/designer/tutorial-send-slack-message-sql-udf"
+   ]
+  },
+  {
+   "id": 3,
+   "domain": "Developing Code",
+   "topic": "Streaming table vs materialized view for latency/cost/refresh",
+   "stem": "Your team is building a real-time analytics pipeline. Raw events stream in at 100K events per second; a downstream aggregation table must be fresh within 5 minutes for executive dashboards (SLA), but the business can tolerate stale intermediate results if they save 60% on compute costs. The aggregation runs for ~2 seconds per execution. Should you use a streaming table or materialized view?",
+   "code": null,
+   "options": {
+    "A": "Materialized view on 1-minute refresh to guarantee freshness and exceed business requirements.",
+    "B": "Streaming table, because it maintains continuous incremental processing and guarantees sub-second freshness.",
+    "C": "Materialized view with 5-minute refresh, because it meets the SLA, avoids constant recomputation, and saves ~60% on compute vs. streaming.",
+    "D": "Streaming table for ingestion plus materialized view on top for aggregation to combine incremental and batch patterns."
+   },
+   "answer": "C",
+   "explanation": "A materialized view with 5-minute refresh perfectly satisfies both the SLA (freshness within 5 minutes) and cost constraints (60% savings vs. continuous streaming). Streaming tables cost more (per-second compute). the first approach exceeds requirements (overkill). the third approach adds unnecessary complexity. the fourth approach over-specifies refresh frequency and wastes budget.",
+   "optExpl": {
+    "A": "Incorrect: More frequent refresh than needed violates cost constraints.",
+    "B": "Incorrect: Streaming tables cost more (continuous compute) and exceed the SLA requirement.",
+    "C": "Correct: MV refresh every 5 minutes meets SLA and saves 60% vs. streaming.",
+    "D": "Incorrect: Redundant layering adds operational overhead without benefit."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ldp/concepts/streaming-tables",
+    "https://docs.databricks.com/aws/en/ldp/concepts/materialized-views"
+   ]
+  },
+  {
+   "id": 4,
+   "domain": "Developing Code",
+   "topic": "AUTO CDC SCD Type 2 with sequence_by",
+   "stem": "You are building a customer dimension table in a Lakeflow Declarative Pipeline. Source data contains customer attributes (name, email, tier) that change over time. You need to track the full history with effective/end dates and mark the current row. The CRM feed has an `updated_at` timestamp, and you must preserve the original record ID. Which AUTO CDC configuration is correct?",
+   "code": {
+    "lang": "sql",
+    "src": "CREATE OR REFRESH STREAMING TABLE customer_dim\n  FLOW AUTO CDC\n  FROM (select * from cloud_files(...))\n  KEYS (cust_id)\n  SEQUENCE BY updated_at\n  TRACK HISTORY ON (name, email, tier)\n  STORED AS SCD TYPE 2"
+   },
+   "options": {
+    "A": "Use `APPLY CHANGES` instead of `AUTO CDC INTO` for modern syntax.",
+    "B": "Add `SCD TYPE 2` clause and `EFFECTIVE_DATE` config; `TRACK HISTORY` only works with manual change feeds.",
+    "C": "The SQL is correct; AUTO CDC automatically adds `_change_type`, `_start_date`, `_end_date` for SCD Type 2.",
+    "D": "Add `TRACK HISTORY COLUMN LIST (cust_id, name, email, tier)` to include the key in tracked columns."
+   },
+   "answer": "C",
+   "explanation": "`FLOW AUTO CDC` with `KEYS`, `SEQUENCE BY updated_at`, `TRACK HISTORY ON`, and `STORED AS SCD TYPE 2` is the correct modern Lakeflow syntax for SCD Type 2. The system automatically manages `__START_AT` and `__END_AT` columns for history tracking. Using APPLY CHANGES represents legacy syntax; misapplying SCD Type 2 configuration wastes effort.",
+   "optExpl": {
+    "A": "Incorrect: APPLY CHANGES is legacy; FLOW AUTO CDC is the modern approach.",
+    "B": "Incorrect: TRACK HISTORY COLUMN LIST is standard in AUTO CDC.",
+    "C": "Correct: FLOW AUTO CDC with KEYS, TRACK HISTORY ON, and SCD TYPE 2 is the modern syntax that automatically adds __START_AT and __END_AT.",
+    "D": "Incorrect: Primary keys belong in the source, not in TRACK HISTORY COLUMN LIST."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-streaming-table-auto-cdc"
+   ]
+  },
+  {
+   "id": 5,
+   "domain": "Developing Code",
+   "topic": "Structured Streaming event-time window with watermark",
+   "stem": "Your real-time analytics team processes IoT sensor data with Structured Streaming. Events arrive with `event_time` timestamps and must be grouped into 5-minute time windows. Your SLA requires that late-arriving events (up to 10 minutes late) update existing window aggregations, and events beyond 10 minutes are dropped without error. You want to emit window updates efficiently, sending only changed rows to downstream consumers to minimize network and storage overhead. Which watermark and output mode combination is correct?",
+   "code": null,
+   "options": {
+    "A": "No watermark; use `append` mode and manually filter records older than 10 minutes.",
+    "B": "Watermark of 10 minutes, 5-minute window, and `complete` output mode for full aggregates.",
+    "C": "Watermark of 10 minutes on `event_time`, 5-minute window, and `append` output mode for finalized results.",
+    "D": "Watermark of 10 minutes on `event_time`, 5-minute window, and `update` output mode to emit only changed rows."
+   },
+   "answer": "D",
+   "explanation": "A 10-minute watermark allows late events up to 10 minutes; beyond that they drop. Update mode emits only changed rows (efficient for late arrivals), whereas complete mode re-sends all windows with every trigger (wasteful), and append mode never emits updates after a window's watermark is reached. Update mode directly satisfies the requirement to update windows when late data arrives.",
+   "optExpl": {
+    "A": "Incorrect: Manual filtering bypasses Structured Streaming's stateful semantics.",
+    "B": "Incorrect: Complete mode re-emits all windows every trigger; wasteful.",
+    "C": "Incorrect: Append mode finalizes windows at the watermark and never emits further updates.",
+    "D": "Correct: Watermark + update mode allows late events to update windows, emitting only changed rows for efficiency."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/pyspark/reference/classes/dataframe/withWatermark",
+    "https://docs.databricks.com/aws/en/structured-streaming/output-mode"
+   ]
+  },
+  {
+   "id": 6,
+   "domain": "Developing Code",
+   "topic": "Lakeflow Jobs For Each task with task values",
+   "stem": "You are building a Lakeflow Jobs pipeline that processes data for multiple customers in parallel. Each customer record has `customer_id` and `customer_name`. You need to run a transformation notebook for each customer, passing the customer ID as a parameter. Which DAB configuration using `for_each` is correct?",
+   "code": {
+    "lang": "yaml",
+    "src": "tasks:\n  process_per_customer:\n    for_each:\n      items: SELECT customer_id, customer_name FROM {{var.customer_table}}\n    task:\n      notebook_task:\n        notebook_path: /transform_customer\n        base_parameters:\n          CUSTOMER_ID: \"{{task.customer_id}}\""
+   },
+   "options": {
+    "A": "The YAML is correct; `for_each.items` will iterate, and `task.customer_id` auto-binds.",
+    "B": "Change `base_parameters.CUSTOMER_ID` to `{{each.value.customer_id}}`.",
+    "C": "The YAML is correct; `task.customer_id` correctly references the column from the iteration.",
+    "D": "Add explicit `loop_variable` config; `for_each` does not auto-bind column names."
+   },
+   "answer": "C",
+   "explanation": "In Lakeflow Jobs `for_each`, the `items` SQL query auto-binds row columns to `task.<column>` in the task context. The YAML shown is correct. the first approach is correct but imprecise. the second approach uses non-existent syntax. the fourth approach overstates the need for explicit config.",
+   "optExpl": {
+    "A": "Incorrect: While the YAML works, the auto-binding of row columns to task context is the more precise and standard pattern.",
+    "B": "Incorrect: `each.value` is not Lakeflow syntax; use `task.column_name`.",
+    "C": "Correct: Auto-binding of row columns to task context variables is standard.",
+    "D": "Incorrect: Auto-binding is built-in; no explicit loop_variable needed."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/jobs/how-to/foreach-sql-lookup-tutorial",
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/job-task-types"
+   ]
+  },
+  {
+   "id": 7,
+   "domain": "Developing Code",
+   "topic": "Serverless environment dependency management",
+   "stem": "Your data engineering team runs a daily sentiment analysis job on serverless compute to classify 100K support tickets. The job uses a 500 MB Python NLP library (spacy + transformers). Profiling shows 15 seconds of every 30-second run is spent in environment initialization and dependency installation. You've already packaged the library as a wheel. Your team needs to reduce initialization overhead without switching to classic clusters (to maintain cost efficiency). Which approach best achieves this?",
+   "code": null,
+   "options": {
+    "A": "Use `init_scripts` to pre-cache dependencies; serverless will apply the script on every run.",
+    "B": "Move to a classic cluster; serverless is not suited for heavy library workloads.",
+    "C": "Use serverless **performance mode** (`performance_mode: performance` in DAB) and pre-package the library as a wheel; performance mode caches environments.",
+    "D": "Deploy the library as a Databricks App asset workspace-wide; serverless auto-loads cached versions."
+   },
+   "answer": "C",
+   "explanation": "Serverless performance mode caches Python environments across runs within a time window, eliminating repeated initialization. Wheels enable caching. Abandoning serverless without exploring optimization is premature; misapplying features like Apps and init scripts won't solve the problem.",
+   "optExpl": {
+    "A": "Incorrect: Init scripts run every initialization; they don't persist caches.",
+    "B": "Incorrect: Serverless can be optimized via performance mode; abandoning it is unnecessary.",
+    "C": "Correct: Performance mode caches environments; wheels avoid repeated downloads.",
+    "D": "Incorrect: Apps are not dependency package repositories."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/compute/serverless/dependencies",
+    "https://docs.databricks.com/aws/en/dev-tools/bundles/library-dependencies"
+   ]
+  },
+  {
+   "id": 8,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Auto Loader schema evolution and _rescued_data",
+   "stem": "Your compliance team's Auto Loader ingestion pipeline processes daily compliance reports in JSON format. After weeks of stable ingestion, a new upstream system adds a `metadata.compliance_flags` nested field that your schema doesn't define. The pipeline must preserve all records (not skip or fail) so the compliance team can audit the data later. Your transformation jobs downstream are not yet updated to handle the new field. How does Auto Loader handle unexpected fields by default?",
+   "code": null,
+   "options": {
+    "A": "Auto Loader drops them silently; you must add the field to the schema or use `schema_evolution_mode: 'addNewColumns'`.",
+    "B": "Auto Loader automatically rescues unexpected fields into the `_rescued_data` column as JSON for safe preservation.",
+    "C": "Unexpected fields quarantine the entire record in `_quarantine_table`; use Auto Loader's recovery API to recover.",
+    "D": "Auto Loader rejects the file and halts ingestion; use `cloudFiles.rescueData = false` to accept unknown fields."
+   },
+   "answer": "B",
+   "explanation": "Auto Loader automatically rescues unexpected data into the `_rescued_data` column as JSON, preventing ingestion failure. You can inspect and decide whether to add the field to the schema. the first approach understates capability. the third approach confuses quarantine (data quality, not schema). the fourth approach misrepresents default behavior.",
+   "optExpl": {
+    "A": "Incorrect: Auto Loader has automatic rescue behavior; it doesn't silently drop.",
+    "B": "Correct: Unexpected fields go to `_rescued_data` as JSON for safe preservation.",
+    "C": "Incorrect: Quarantine is for data quality expectations, not schema detection.",
+    "D": "Incorrect: Auto Loader accepts unknown fields by default via `_rescued_data`."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema",
+    "https://docs.databricks.com/aws/en/data-engineering/schema-evolution"
+   ]
+  },
+  {
+   "id": 9,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Kafka ingestion to streaming table",
+   "stem": "Your platform team is building a real-time event ingestion pipeline using Lakeflow Declarative Pipelines to consume JSON events from a Kafka topic (10K events/sec, 8 partitions, growing). The topic contains transaction records with nested user and product fields. Your pipeline must start from the latest offset (not historical backlog), auto-discover new partitions if the Kafka broker adds them, and parse JSON into structured typed columns for downstream analytics. Which Lakeflow configuration correctly satisfies all three requirements?",
+   "code": null,
+   "options": {
+    "A": "Use `kafka_bootstrap_servers` with `value.deserializer='StringDeserializer'` to parse JSON.",
+    "B": "Use `cloudFiles` with a Kafka source and wrap JSON in `from_json()` to deserialize.",
+    "C": "Use `kafka_bootstrap_servers`, add `startingOffsets='latest'` and `auto.offset.reset='latest'` in options.",
+    "D": "Use `kafka_bootstrap_servers` with `startingOffsets='latest'` (built-in default); new partitions auto-discovered; deserialize via `from_json()`."
+   },
+   "answer": "D",
+   "explanation": "Lakeflow's Kafka connector starts from `startingOffsets='latest'` by default and auto-discovers new partitions. Deserialize JSON via `from_json()` after casting the value to string. the first approach conflates serializer config (not exposed at SQL level). the second approach misapplies `cloudFiles`. the third approach redundantly adds default config.",
+   "optExpl": {
+    "A": "Incorrect: Serializer config isn't exposed at the Lakeflow SQL level.",
+    "B": "Incorrect: `cloudFiles` is for cloud object storage, not Kafka.",
+    "C": "Incorrect: `latest` is already default; `auto.offset.reset` is redundant.",
+    "D": "Correct: Kafka connector with latest offset, auto-discovery, and from_json() deserialization."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/connect/streaming/kafka/",
+    "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/kafka"
+   ]
+  },
+  {
+   "id": 10,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Lakeflow Connect SQL Server CDC",
+   "stem": "Your enterprise's legacy order management system runs on an on-premises SQL Server behind a corporate firewall. Your data team must ingest all customer and order changes into Databricks daily, including deletes (SCD Type 2 history tracking). You have a VPN tunnel bridging your on-prem network to AWS VPC. You want to use Lakeflow Connect's native CDC capabilities to track inserts, updates, and deletes without manual log parsing. What architecture is required to enable this integration?",
+   "code": null,
+   "options": {
+    "A": "Configure SQL Server source in Lakeflow Connect UI, enable CDC at the database, select `change_data_capture=true` in the pipeline.",
+    "B": "Deploy a Lakeflow Connect Ingestion Gateway (Relay) in your on-prem network, configure SQL Server source, enable database CDC, create ingestion pipeline in Databricks.",
+    "C": "Use a Databricks SQL endpoint to query SQL Server via JDBC; Lakeflow Jobs periodically exports CDC logs.",
+    "D": "Route SQL Server transaction logs to Kafka, then ingest Kafka into Databricks via Lakeflow."
+   },
+   "answer": "B",
+   "explanation": "On-premises databases require an Ingestion Gateway deployed in your network to securely bridge the firewall. Enable SQL Server CDC, configure the source in Lakeflow Connect, define an ingestion pipeline. Other approaches either omit the gateway (needed for firewall access) or add unnecessary complexity by bypassing CDC.",
+   "optExpl": {
+    "A": "Incorrect: Misses the Ingestion Gateway/Relay needed for on-prem access through firewall.",
+    "B": "Correct: Relay + database CDC + Lakeflow Connect pipeline handles on-prem CDC.",
+    "C": "Incorrect: JDBC queries are not CDC; they don't track deletes or history.",
+    "D": "Incorrect: Kafka adds unnecessary complexity; Lakeflow Connect handles CDC natively."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/"
+   ]
+  },
+  {
+   "id": 11,
+   "domain": "Data Ingestion & Acquisition",
+   "topic": "Delta Sharing to non-Databricks recipient",
+   "stem": "Your organization (Databricks-based) wants to share real-time customer analytics data with a key business partner who uses Snowflake and has no Databricks workspace. The partner's analysts need self-service query access without joining your workspace or undergoing lengthy credential setup. Your team needs minimal operational overhead. The partner SLA requires data freshness within 1 hour. Which Delta Sharing model enables this collaboration?",
+   "code": null,
+   "options": {
+    "A": "Use Lakehouse Federation to allow Snowflake to query Databricks catalogs directly.",
+    "B": "Invite the partner to your Databricks workspace and grant `EXECUTE` permission on a shared external location.",
+    "C": "Delta Sharing requires both parties on Databricks; export to Parquet and sync via cloud storage instead.",
+    "D": "**Direct Delta Sharing** (open sharing): Configure a share in Databricks, and the partner queries via Snowflake's native Delta Sharing connector."
+   },
+   "answer": "D",
+   "explanation": "Delta Sharing's open sharing model allows non-Databricks recipients (Snowflake included) to access shared Delta tables via a URL and lightweight connector. No workspace login required. the second approach requires workspace access (not applicable). the third approach forces manual export (defeats real-time). the fourth approach is federation (opposite direction).",
+   "optExpl": {
+    "A": "Incorrect: Federation allows Snowflake to query Databricks; sharing is the opposite.",
+    "B": "Incorrect: Requires workspace access; not applicable to external partners.",
+    "C": "Incorrect: Delta Sharing works with non-Databricks systems via open sharing.",
+    "D": "Correct: Open sharing enables non-Databricks recipients like Snowflake to query Delta tables."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/opensharing"
+   ]
+  },
+  {
+   "id": 12,
+   "domain": "Data Manipulation",
+   "topic": "Window function to keep latest record per key",
+   "stem": "Your finance team's settlement process requires deduplicating a raw transactions table to identify the final state of each customer's daily activity. The table has `account_id`, `transaction_date`, `amount`, and `sequence_id` (monotonically increasing within each account/day combination to track event order). Multiple transactions can occur on the same date for a single account; you must pick the transaction with the highest `sequence_id` to get the true final state. Your settlement job must select exactly one row per account per day. Write the SQL query that accomplishes this.",
+   "code": {
+    "lang": "sql",
+    "src": "SELECT account_id, transaction_date, amount, sequence_id\nFROM (\n  SELECT account_id, transaction_date, amount, sequence_id,\n         ROW_NUMBER() OVER (PARTITION BY account_id, transaction_date ORDER BY sequence_id DESC) AS rn\n  FROM transactions\n)\nWHERE rn = 1"
+   },
+   "options": {
+    "A": "Add `ORDER BY transaction_date DESC` to prioritize latest date first.",
+    "B": "The query is correct; `ROW_NUMBER()` with `sequence_id DESC` ranks by highest sequence (latest), keeping `rn=1`.",
+    "C": "Replace `ROW_NUMBER()` with `RANK()` to handle ties in `sequence_id`.",
+    "D": "Use `ORDER BY sequence_id ASC` to get the latest (most recent) record."
+   },
+   "answer": "B",
+   "explanation": "`ROW_NUMBER()` with `ORDER BY sequence_id DESC` correctly assigns rank 1 to the highest sequence_id within each partition. the second approach wrongly suggests `RANK()` (for ties, unnecessary). the third approach reverses the sort (DESC is correct). the fourth approach adds redundant date sorting (already partitioned).",
+   "optExpl": {
+    "A": "Incorrect: Date is already in PARTITION BY; redundant ordering.",
+    "B": "Correct: ROW_NUMBER with DESC sequence_id order correctly selects latest record.",
+    "C": "Incorrect: RANK() is for ties; ROW_NUMBER() is simpler and correct here.",
+    "D": "Incorrect: DESC gets the highest (latest) sequence_id, not the lowest."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/sql/language-manual/functions/row_number"
+   ]
+  },
+  {
+   "id": 13,
+   "domain": "Data Manipulation",
+   "topic": "VARIANT with parse_json / try_variant_get",
+   "stem": "Your data pipeline ingests clickstream events as JSON strings in an `event_metadata` column. You need to extract the nested `user.id` and `action` fields for analytics. Some records have malformed JSON or missing fields. Your downstream BI tool requires NULL for any extraction errors (not exceptions). You're building a transformation that must handle 10M records reliably without job failures. Which SQL approach correctly extracts these fields safely?",
+   "code": {
+    "lang": "sql",
+    "src": "SELECT \n  try_variant_get(parse_json(event_metadata), 'user.id', 'string') AS user_id,\n  try_variant_get(parse_json(event_metadata), 'action', 'string') AS action\nFROM events"
+   },
+   "options": {
+    "A": "Use `variant_get()` instead of `try_variant_get()` for the modern API.",
+    "B": "Use `get_json_object()` instead for simpler path extraction.",
+    "C": "Call `parse_json()` once as a temp variable; calling twice is inefficient.",
+    "D": "The query is correct; `parse_json()` converts string to VARIANT, `try_variant_get()` safely extracts and returns NULL on failure."
+   },
+   "answer": "D",
+   "explanation": "`parse_json()` converts string to VARIANT; `try_variant_get()` safely extracts and returns NULL on error. This is the standard and idiomatic approach. the second approach reverses modern API (try_variant_get is safer). the third approach uses older API. the fourth approach is micro-optimization (SQL engines optimize this).",
+   "optExpl": {
+    "A": "Incorrect: variant_get() throws errors; try_variant_get() is safer.",
+    "B": "Incorrect: get_json_object is older; VARIANT is more flexible.",
+    "C": "Incorrect: Calling parse_json twice is negligible; SQL optimizes this.",
+    "D": "Correct: parse_json + try_variant_get is the standard safe pattern."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ingestion/variant",
+    "https://docs.databricks.com/aws/en/pyspark/reference/classes/variantval"
+   ]
+  },
+  {
+   "id": 14,
+   "domain": "Data Manipulation",
+   "topic": "Expectations-based quarantine pattern",
+   "stem": "Your order fulfillment team runs a Lakeflow pipeline ingesting 50K daily orders. Validation rules require `order_date` (non-null, within past year) and `total_amount > 0`. Orders violating these rules must be identified and flagged with a `validation_status` column for manual review by compliance, but the pipeline must continue processing. Your team wants automated audit trails showing which records failed which rules. Which pattern correctly implements this using Lakeflow's data quality features?",
+   "code": {
+    "lang": "sql",
+    "src": "CREATE STREAMING TABLE orders_validated\n  @expect(description='Valid order date', \n          constraint='order_date IS NOT NULL AND order_date >= CURRENT_DATE() - INTERVAL 365 DAY')\n  @expect(description='Positive amount',\n          constraint='total_amount > 0')\nAS\nSELECT *,\n  CASE WHEN (order_date IS NULL OR order_date < CURRENT_DATE() - INTERVAL 365 DAY OR total_amount <= 0) \n       THEN 'Failed' ELSE 'Passed' END AS validation_status\nFROM orders_raw"
+   },
+   "options": {
+    "A": "Create two tables: valid rows (WHERE filter) and invalid rows (NOT conditions); monitor the invalid table manually.",
+    "B": "Use @expect decorators with individual constraint descriptions; add a validation_status column for flagging; pipeline continues and metrics are recorded.",
+    "C": "Use EXPECT with `ON VIOLATION DROP ROW` to explicitly remove invalid rows before writing; this ensures data quality.",
+    "D": "Use WHERE clause to filter valid rows; EXPECT is only for monitoring and doesn't flag individual records."
+   },
+   "answer": "B",
+   "explanation": "Using @expect decorators (Python API for Lakeflow) with explicit constraint descriptions allows the pipeline to record metrics for audit trails while continuing to process all rows. Adding a validation_status column flags invalid records for manual review. the first approach requires manual maintenance. the third approach would DROP the rows (not flag them). the fourth approach loses audit trail capability.",
+   "optExpl": {
+    "A": "Incorrect: Manual dual-table approach bypasses Lakeflow's built-in expectation tracking and audit trails.",
+    "B": "Correct: @expect decorators with validation_status column flag invalid rows while recording metrics for audit.",
+    "C": "Incorrect: ON VIOLATION DROP ROW removes records; doesn't flag them for manual compliance review.",
+    "D": "Incorrect: WHERE filtering alone loses audit trail; EXPECT provides metric recording for compliance."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/ldp/expectations",
+    "https://docs.databricks.com/aws/en/ldp/developer/ldp-python-ref-expectations"
+   ]
+  },
+  {
+   "id": 15,
+   "domain": "Monitoring and Alerting",
+   "topic": "Cost attribution by job tag",
+   "stem": "Your finance team needs to chargeback compute costs to each business unit (finance, marketing, engineering) for monthly reporting. Every Databricks job is tagged with `cost_center` metadata. You'll query `system.billing.usage` to retrieve billing data by usage type and resource. Your CFO requires a weekly dashboard showing spend breakdown by cost_center. You need to join billing data with job/cluster metadata to associate costs with tags. What's the correct SQL pattern?",
+   "code": null,
+   "options": {
+    "A": "Query `system.billing.usage` filtered to `usage_type='COMPUTE'`, join on `job_id` to `system.jobs.list_jobs()` output, extract cost_center tag.",
+    "B": "Query `system.billing.usage`, join to `system.compute.clusters` on `cluster_id` to get cluster tags; map clusters to jobs.",
+    "C": "Use `system.billing.list_prices()` to calculate cost per DBU, then manually parse job config files for tags.",
+    "D": "Query `system.billing.usage` for `usage_type='COMPUTE'`, join to job/cluster metadata to access tags, group by `cost_center` tag value."
+   },
+   "answer": "D",
+   "explanation": "Join billing data to job/cluster metadata via IDs, extract the `cost_center` tag, and group by tag to attribute costs. the first approach over-relies on APIs (less maintainable). the second approach adds unnecessary cluster indirection. the third approach conflates pricing with tagging. the fourth approach is the clearest SQL-native approach.",
+   "optExpl": {
+    "A": "Incorrect: APIs are less maintainable than SQL queries on system tables.",
+    "B": "Incorrect: Cluster-level tagging is less reliable; use job-level tags.",
+    "C": "Incorrect: Pricing calculation is separate from tag attribution.",
+    "D": "Correct: Join billing to jobs/clusters, extract cost_center tag, group and sum."
+   },
+   "refs": [
+    "https://docs.databricks.com/aws/en/admin/system-tables/billing",
+    "https://docs.databricks.com/aws/en/admin/system-tables/jobs-cost"
+   ]
+  }
+ ]
+}
